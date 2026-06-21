@@ -1,0 +1,54 @@
+name: michicator 💌
+
+on:
+  # ── Cron automático ────────────────────────────────────────────────────
+  # Ajusta el horario aquí. Usa https://crontab.guru para verlo visualmente.
+  # Ejemplos:
+  #   '0 14 * * *'       → todos los días a las 9am Colombia (UTC-5 → 14:00 UTC)
+  #   '0 14 */2 * *'     → cada 2 días a las 9am Colombia
+  #   '0 14 * * 1,3,5'   → lunes, miércoles y viernes
+  schedule:
+    - cron: '0 14 * * *'
+
+  # ── Disparo manual (para pruebas) ──────────────────────────────────────
+  workflow_dispatch:
+    inputs:
+      recipient:
+        description: 'A quién mandar el mensaje'
+        required: true
+        default: 'test'
+        type: choice
+        options:
+          - test
+          - main
+
+jobs:
+  send:
+    name: Enviar mensaje diario
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Enviar mensaje
+        env:
+          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+          SPOTIFY_PLAYLIST_ID: ${{ secrets.SPOTIFY_PLAYLIST_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          # En el cron usa el secret RECIPIENT_OVERRIDE del repo.
+          # En manual, usa el input del workflow.
+          RECIPIENT_OVERRIDE: ${{ github.event_name == 'workflow_dispatch' && inputs.recipient || secrets.RECIPIENT_OVERRIDE }}
+        run: python scripts/send_daily.py
