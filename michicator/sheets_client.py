@@ -58,17 +58,22 @@ class SheetsClient:
         ws = self._spreadsheet.worksheet("Canciones")
         return ws.get_all_records()
 
-    def get_next_song(self) -> dict | None:
-        """Returns the first unsent song, or None if all were sent."""
+    def get_next_song(self, random_order: bool = False) -> dict | None:
+        """Returns the next unsent song. If random_order=True, picks one at random."""
+        import random
         ws = self._spreadsheet.worksheet("Canciones")
         records = ws.get_all_records()
 
-        for i, row in enumerate(records, start=2):  # row 1 = header
-            enviada = str(row.get("enviada", "")).strip().upper()
-            if enviada in ("", "FALSE", "NO", "0"):
-                return {**row, "_row": i}
+        unsent = [
+            {**row, "_row": i}
+            for i, row in enumerate(records, start=2)
+            if str(row.get("enviada", "")).strip().upper() in ("", "FALSE", "NO", "0")
+        ]
 
-        return None
+        if not unsent:
+            return None
+
+        return random.choice(unsent) if random_order else unsent[0]
 
     def mark_song_sent(self, row: int) -> None:
         ws = self._spreadsheet.worksheet("Canciones")

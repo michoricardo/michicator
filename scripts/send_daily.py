@@ -52,7 +52,8 @@ def main() -> None:
     phrase = None
 
     if modo in ("song", "both"):
-        song = sheets.get_next_song()
+        random_order = config.get("orden_canciones", "secuencial").strip().lower() == "random"
+        song = sheets.get_next_song(random_order=random_order)
         if song is None:
             print("⚠ No quedan canciones sin enviar en el Sheet.")
 
