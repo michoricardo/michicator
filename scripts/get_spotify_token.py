@@ -52,7 +52,7 @@ class _CallbackHandler(BaseHTTPRequestHandler):
 def main() -> None:
     client_id = os.environ.get("SPOTIFY_CLIENT_ID")
     client_secret = os.environ.get("SPOTIFY_CLIENT_SECRET")
-    redirect_uri = f"http://localhost:{_PORT}/callback"
+    redirect_uri = os.environ.get("SPOTIFY_REDIRECT_URI", f"http://localhost:{_PORT}/callback")
 
     if not client_id or not client_secret:
         print("❌ Faltan SPOTIFY_CLIENT_ID o SPOTIFY_CLIENT_SECRET en el .env")

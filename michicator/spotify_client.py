@@ -48,6 +48,7 @@ def get_playlist_tracks(playlist_id: str) -> list[dict]:
             offset=offset,
             limit=limit,
             fields="items(track(id,name,artists,external_urls)),next",
+            additional_types="track",
         )
 
         for item in result["items"]:
