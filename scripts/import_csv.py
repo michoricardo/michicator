@@ -22,11 +22,11 @@ load_dotenv()
 from michicator.sheets_client import SheetsClient
 
 
-# Columnas que exporta Exportify (puede variar ligeramente)
-_POSSIBLE_ID_COLS     = ["Spotify ID", "Track ID", "spotify_id"]
-_POSSIBLE_TITLE_COLS  = ["Track Name", "Name", "titulo", "Title"]
-_POSSIBLE_ARTIST_COLS = ["Artist Name(s)", "Artist Name", "artista", "Artists"]
-_POSSIBLE_URL_COLS    = ["Spotify URI", "Track URI", "url", "URL"]
+# Columnas que exporta Exportify (inglés y español)
+_POSSIBLE_ID_COLS     = ["URI de la canción", "Spotify ID", "Track ID", "spotify_id"]
+_POSSIBLE_TITLE_COLS  = ["Nombre de la canción", "Track Name", "Name", "titulo", "Title"]
+_POSSIBLE_ARTIST_COLS = ["Nombre(s) del artista", "Artist Name(s)", "Artist Name", "artista", "Artists"]
+_POSSIBLE_URL_COLS    = ["URI de la canción", "Spotify URI", "Track URI", "url", "URL"]
 
 
 def _find_col(headers: list[str], candidates: list[str]) -> str | None:
@@ -72,11 +72,13 @@ def main() -> None:
             sys.exit(1)
 
         for row in reader:
-            spotify_id = row.get(id_col, "").strip()
+            raw_id     = row.get(id_col, "").strip()
+            # Soporta tanto URI (spotify:track:ID) como ID directo
+            spotify_id = raw_id.split(":")[-1] if raw_id.startswith("spotify:track:") else raw_id
             titulo     = row.get(title_col, "").strip()
-            artista    = row.get(artist_col, "").strip()
+            artista    = row.get(artist_col, "").strip().split(",")[0].strip()  # solo el primer artista
             raw_url    = row.get(url_col, "").strip() if url_col else ""
-            url        = _uri_to_url(raw_url) if raw_url else f"https://open.spotify.com/track/{spotify_id}"
+            url        = f"https://open.spotify.com/track/{spotify_id}"
 
             if not spotify_id or not titulo:
                 continue
