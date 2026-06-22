@@ -2,19 +2,20 @@
 Spotify client — fetches all tracks from a playlist.
 Used by sync_playlist.py to populate the Google Sheet.
 
-Authentication: uses OAuth (refresh token) so it works with any playlist
-owned by the authenticated user, including public playlists.
+Authentication: uses OAuth (refresh token).
 Run scripts/get_spotify_token.py once to get the refresh token.
 """
 
 import os
-import spotipy
+import requests
 from spotipy.oauth2 import SpotifyOAuth
 
 _SCOPE = "playlist-read-private playlist-read-collaborative"
+_API_BASE = "https://api.spotify.com/v1"
 
 
-def get_client() -> spotipy.Spotify:
+def _get_access_token() -> str:
+    """Gets a fresh access token using the refresh token."""
     auth_manager = SpotifyOAuth(
         client_id=os.environ["SPOTIFY_CLIENT_ID"],
         client_secret=os.environ["SPOTIFY_CLIENT_SECRET"],
@@ -22,36 +23,34 @@ def get_client() -> spotipy.Spotify:
         scope=_SCOPE,
         open_browser=False,
     )
-
-    refresh_token = os.environ.get("SPOTIFY_REFRESH_TOKEN")
-    if refresh_token:
-        token_info = auth_manager.refresh_access_token(refresh_token)
-        return spotipy.Spotify(auth=token_info["access_token"])
-
-    # Fallback: interactive login (only for local setup)
-    return spotipy.Spotify(auth_manager=auth_manager)
+    refresh_token = os.environ["SPOTIFY_REFRESH_TOKEN"]
+    token_info = auth_manager.refresh_access_token(refresh_token)
+    return token_info["access_token"]
 
 
 def get_playlist_tracks(playlist_id: str) -> list[dict]:
     """
     Returns all tracks from a playlist as a list of dicts:
     { spotify_id, titulo, artista, url }
+    Uses requests directly to have full control over API parameters.
     """
-    sp = get_client()
+    access_token = _get_access_token()
+    headers = {"Authorization": f"Bearer {access_token}"}
+
     tracks = []
-    offset = 0
-    limit = 100
+    url = f"{_API_BASE}/playlists/{playlist_id}/tracks"
+    params = {
+        "limit": 100,
+        "offset": 0,
+        "fields": "items(track(id,name,artists,external_urls)),next",
+    }
 
-    while True:
-        result = sp.playlist_items(
-            playlist_id,
-            offset=offset,
-            limit=limit,
-            fields="items(track(id,name,artists,external_urls)),next",
-            additional_types=("track",),
-        )
+    while url:
+        response = requests.get(url, headers=headers, params=params, timeout=15)
+        response.raise_for_status()
+        result = response.json()
 
-        for item in result["items"]:
+        for item in result.get("items", []):
             track = item.get("track")
             if not track or not track.get("id"):
                 continue  # skip local files or null entries
@@ -65,8 +64,7 @@ def get_playlist_tracks(playlist_id: str) -> list[dict]:
                 }
             )
 
-        if result.get("next") is None:
-            break
-        offset += limit
+        url = result.get("next")
+        params = {}  # next URL already includes all params
 
     return tracks
