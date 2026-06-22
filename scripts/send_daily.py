@@ -31,13 +31,14 @@ def main() -> None:
         print("ℹ michicator está pausado (activo=false en Config).")
         return
 
-    # Elegir destinatario
+    # Elegir destinatario(s)
     if recipient_mode == "test":
-        telegram_id = config["test_telegram_id"]
-        print(f" Modo prueba — enviando a ti (ID: {telegram_id})")
+        raw_ids = config["test_telegram_id"]
+        telegram_ids = [tid.strip() for tid in raw_ids.split(",") if tid.strip()]
+        print(f" Modo prueba — enviando a {len(telegram_ids)} destinatario(s): {telegram_ids}")
     else:
-        telegram_id = config["recipient_telegram_id"]
-        print(f" Modo principal — enviando a ella (ID: {telegram_id})")
+        telegram_ids = [config["recipient_telegram_id"].strip()]
+        print(f" Modo principal — enviando a ella (ID: {telegram_ids[0]})")
 
     # Resolver modo de contenido
     modo = config.get("modo", "song").strip().lower()
@@ -70,8 +71,9 @@ def main() -> None:
     message = format_message(song=song, phrase=phrase)
     print(f"\n--- Mensaje ---\n{message}\n---\n")
 
-    telegram_client.send_message(chat_id=telegram_id, text=message)
-    print(" Mensaje enviado.")
+    for tid in telegram_ids:
+        telegram_client.send_message(chat_id=tid, text=message)
+    print(f" Mensaje enviado a {len(telegram_ids)} destinatario(s).")
 
     # Marcar como enviado
     if song:
