@@ -131,3 +131,25 @@ class SheetsClient:
         now = datetime.now(timezone.utc).strftime(_DATE_FMT)
         ws.update_cell(row, 3, "TRUE")        # col C = enviada
         ws.update_cell(row, 4, now)           # col D = fecha_envio
+
+    # ------------------------------------------------------------------ #
+    #  Preguntas                                                           #
+    # ------------------------------------------------------------------ #
+
+    def get_next_question(self) -> dict | None:
+        """Returns the first unsent question, or None if all were sent."""
+        ws = self._spreadsheet.worksheet("Preguntas")
+        records = ws.get_all_records()
+
+        for i, row in enumerate(records, start=2):
+            enviada = str(row.get("enviada", "")).strip().upper()
+            if enviada in ("", "FALSE", "NO", "0"):
+                return {**row, "_row": i}
+
+        return None
+
+    def mark_question_sent(self, row: int) -> None:
+        ws = self._spreadsheet.worksheet("Preguntas")
+        now = datetime.now(timezone.utc).strftime(_DATE_FMT)
+        ws.update_cell(row, 3, "TRUE")        # col C = enviada
+        ws.update_cell(row, 4, now)           # col D = fecha_envio

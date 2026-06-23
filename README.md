@@ -12,7 +12,7 @@
 
 ## ¿Qué hace?
 
-Cada día (o cada N días o configurable), **michicator** le envía por Telegram a esa persona especial:
+Cada día (o cada N días o configurable), **michicator** le envía por Telegram a mi novia:
 
 - 🎵 Una canción de tu lista — sin repetirse nunca
 - 💬 Una frase que tú escribiste — sin repetirse nunca

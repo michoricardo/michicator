@@ -8,6 +8,8 @@ Cómo usar:
 
 import os
 import sys
+import random
+from datetime import date, datetime, timezone
 
 # Permite ejecutar desde la raíz del proyecto
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -19,6 +21,15 @@ load_dotenv()
 from michicator.sheets_client import SheetsClient
 from michicator import telegram_client
 from michicator.message_formatter import format_message
+
+
+def _days_together(fecha_inicio_str: str) -> int | None:
+    """Calcula los días juntos desde fecha_inicio (formato YYYY-MM-DD)."""
+    try:
+        inicio = date.fromisoformat(fecha_inicio_str.strip())
+        return (date.today() - inicio).days
+    except Exception:
+        return None
 
 
 def main() -> None:
@@ -68,12 +79,36 @@ def main() -> None:
         print(" No hay contenido para enviar. Revisa el Sheet.")
         sys.exit(1)
 
+    # Contador de días juntos
+    days = None
+    fecha_inicio = config.get("fecha_inicio", "").strip()
+    if fecha_inicio:
+        days = _days_together(fecha_inicio)
+        if days is not None:
+            print(f"   Llevan {days} días juntos 🧡")
+
+    # Miércoles de garrapata — agregar pregunta si es miércoles
+    question = None
+    es_miercoles = date.today().weekday() == 2  # 0=lunes, 2=miércoles
+    miercoles_activo = config.get("miercoles_garrapata", "true").strip().lower() == "true"
+
+    if es_miercoles and miercoles_activo:
+        print("   🐱 ¡Miércoles de garrapata! Buscando pregunta...")
+        question = sheets.get_next_question()
+        if question is None:
+            print("⚠ No quedan preguntas sin enviar en el Sheet.")
+        else:
+            print(f"   Pregunta: {question.get('pregunta', '')[:50]}...")
+
     # Construir y enviar mensaje
-    import random
     raw_header = config.get("mensaje_cabecera", "Para ti, hoy ✨")
+    if es_miercoles and miercoles_activo:
+        raw_header = config.get("mensaje_cabecera_miercoles", raw_header)
     opciones = [h.strip() for h in raw_header.split("|") if h.strip()]
     header = random.choice(opciones) if opciones else "Para ti, hoy ✨"
-    message = format_message(song=song, phrase=phrase, header=header)
+
+    message = format_message(song=song, phrase=phrase, header=header,
+                             days_together=days, question=question)
     print(f"\n--- Mensaje ---\n{message}\n---\n")
 
     for tid in telegram_ids:
@@ -88,6 +123,10 @@ def main() -> None:
     if phrase:
         sheets.mark_phrase_sent(phrase["_row"])
         print(f"   Frase marcada: {phrase['frase'][:50]}...")
+
+    if question:
+        sheets.mark_question_sent(question["_row"])
+        print(f"   Pregunta marcada como enviada.")
 
     # Actualizar estado de alternado
     if config.get("modo", "").strip().lower() == "alternate":

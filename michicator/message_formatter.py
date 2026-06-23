@@ -5,11 +5,14 @@ def format_message(
     song: dict | None = None,
     phrase: dict | None = None,
     header: str = "Para ti, hoy ✨",
+    days_together: int | None = None,
+    question: dict | None = None,
 ) -> str:
     parts: list[str] = []
 
     if header:
-        parts.append(header)
+        days_str = f"\nLlevamos {days_together} días juntos 🧡" if days_together else ""
+        parts.append(f"{header}{days_str}")
 
     if phrase:
         frase = phrase.get("frase", "").strip()
@@ -26,5 +29,10 @@ def format_message(
             song_line += f"\n{url}"
 
         parts.append(f"\n{song_line}")
+
+    if question:
+        pregunta = question.get("pregunta", "").strip()
+        if pregunta:
+            parts.append(f"\n🌻 Pregunta de hoy:\n{pregunta}")
 
     return "\n".join(parts)
