@@ -1,6 +1,6 @@
 # 🐱 michicator
 
-> *micho dedicator* — Un bot que le manda canciones y frases a tu michi favorita, cada día.
+> *Michicator - micho dedicator* — Un bot que le hice a mi novia Frida para celebrar un mesversario. Este bot le manda canciones que yo le he querido dedicar y también frases bonitas de manera automatizada, pero escritas y escogidas por uno mismo con la intención de que nunca se me pase el detalle del diario que la pueda hacer sentir amada aunque sea un poquito más. ¿Será esta una buena manera nerd para honrar a este regalo que Dios me dio? 🤔
 
 <p align="center">
   <img src="https://i.pinimg.com/736x/96/db/b0/96dbb065a1beafad294f4f0d97756ad6.jpg" width="380" alt="michicator" />
@@ -395,4 +395,4 @@ Simple. Elegante. Personal.
 
 ---
 
-*Con ayuda del buen claude sonnet, pero con todo el amor del mundo, te amo!!!*
+*Con ayuda del buen claude sonnet, pero con todo el amor del mundo, te amo garrapata!!!*
