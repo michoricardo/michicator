@@ -1,18 +1,205 @@
 # 🐱 michicator
 
-> *micho dedicator* — Un bot que le manda canciones (y frases) a tu michi favorita, cada día.
+> *micho dedicator* — Un bot que le manda canciones y frases a tu michi favorita, cada día.
 
 ---
 
 ## ¿Qué hace?
 
-Cada día (o cada N días), **michicator** le envía por Telegram a tu novia:
+Cada día (o cada N días), **michicator** le envía por Telegram a quien tú elijas:
 
-- 🎵 Una canción de tu playlist de Spotify — sin repetirse
-- 💬 Una frase que tú escribiste en Google Sheets — sin repetirse
+- 🎵 Una canción de tu lista — sin repetirse nunca
+- 💬 Una frase que tú escribiste — sin repetirse nunca
 - O ambas cosas a la vez, o alternando
+- Con un mensaje de cabecera rotativo que cambia cada envío
 
 Todo configurable desde una hoja de Google Sheets, sin tocar código.
+
+---
+
+## Stack (100% gratis)
+
+| Pieza | Tecnología |
+|---|---|
+| Scheduler | GitHub Actions (cron) |
+| Canciones | Google Sheets (importadas desde CSV de Exportify) |
+| Frases + estado | Google Sheets (gspread) |
+| Mensajes | Telegram Bot API |
+| Lenguaje | Python 3.11+ |
+
+No hay servidor que pagar. GitHub Actions ejecuta el script en la nube gratis.
+
+---
+
+## ✅ Lo que puede hacer hoy
+
+- Enviar una canción aleatoria (o secuencial) por Telegram cada día, sin repetirse
+- Enviar frases personalizadas sin repetirse
+- Alternar entre canciones y frases, o mandar ambas juntas
+- Rotar el mensaje de cabecera aleatoriamente entre varias opciones
+- Manejar múltiples destinatarios en modo prueba (tú + amigos)
+- Manejar múltiples destinatarios en modo producción (tu novia + quien quieras)
+- Pausar el bot desde el Sheet (sin tocar código)
+- Importar canciones desde un CSV exportado por Exportify
+- Correr automáticamente en la nube con GitHub Actions (gratis)
+- Dispararse manualmente desde GitHub con un click
+
+## ❌ Limitaciones conocidas
+
+- **No puede leer la playlist de Spotify directamente**: Spotify bloqueó el endpoint `/playlists/{id}/tracks` para apps en Development Mode desde 2024. El workaround es exportar el CSV desde [exportify.app](https://exportify.app) y usar `scripts/import_csv.py`
+- **GitHub Actions tiene delay**: el cron no es exacto al minuto, puede retrasarse hasta 30 min en horas pico (irrelevante para uso diario)
+- **Máximo 5 usuarios testers en Spotify**: restricción de Development Mode (no afecta el funcionamiento del bot)
+
+---
+
+## Estructura del Google Sheet
+
+Crea un Google Sheet con estas pestañas exactas:
+
+### Pestaña: `Config`
+| clave | valor | descripción |
+|---|---|---|
+| `activo` | `true` | Pon `false` para pausar el bot |
+| `modo` | `song` | `song`, `phrase`, `both` o `alternate` |
+| `orden_canciones` | `random` | `random` o `secuencial` |
+| `mensaje_cabecera` | `Para ti, hoy ✨\|Buenos días 🐱\|Pensando en ti 💭` | Separados por `\|`, elige uno al azar |
+| `recipient_telegram_id` | `123456789` | Chat ID de ella (o varios separados por `,`) |
+| `test_telegram_id` | `123456789,987654321` | Tus IDs de prueba (separados por `,`) |
+| `last_mode_sent` | `song` | Lo actualiza el bot automáticamente al alternar |
+
+**Valores de `modo`:**
+- `song` — solo canción
+- `phrase` — solo frase
+- `both` — canción + frase juntas
+- `alternate` — va alternando canción / frase cada envío
+
+### Pestaña: `Canciones`
+| # | spotify_id | titulo | artista | url | enviada | fecha_envio |
+|---|---|---|---|---|---|---|
+
+*(se llena con `scripts/import_csv.py` desde un CSV de Exportify)*
+
+### Pestaña: `Frases`
+| # | frase | enviada | fecha_envio |
+|---|---|---|---|
+| 1 | Eres lo mejor que me ha pasado este año. | FALSE | |
+| 2 | Te admiro más de lo que sé expresar. | FALSE | |
+
+---
+
+## Configuración de Secrets en GitHub
+
+Ve a tu repo → **Settings → Secrets and variables → Actions → New repository secret**
+
+| Secret | Descripción |
+|---|---|
+| `TELEGRAM_BOT_TOKEN` | Token de BotFather |
+| `GOOGLE_SHEET_ID` | ID del Google Sheet (en la URL) |
+| `GOOGLE_CREDENTIALS_JSON` | JSON completo de la cuenta de servicio (en una línea) |
+| `RECIPIENT_OVERRIDE` | `test` (para pruebas) o `main` (para producción) |
+
+> Los secrets de Spotify (`SPOTIFY_CLIENT_ID`, etc.) son opcionales — solo los necesitas si en el futuro quieres usar el sync directo con la API de Spotify.
+
+---
+
+## Comandos útiles
+
+```bash
+# Instalar dependencias
+pip install -r requirements.txt
+
+# Importar canciones desde CSV de Exportify
+python scripts/import_csv.py ~/Downloads/mi_playlist.csv
+
+# Obtener Spotify refresh token (una sola vez)
+python scripts/get_spotify_token.py
+
+# Enviar mensaje de prueba (a ti mismo)
+python scripts/send_daily.py   # RECIPIENT_OVERRIDE=test en el .env
+
+# Enviar a ella
+# Cambia RECIPIENT_OVERRIDE=main en el .env o en los Secrets de GitHub
+python scripts/send_daily.py
+```
+
+---
+
+## Cómo importar canciones (flujo actual)
+
+1. Ve a [exportify.app](https://exportify.app)
+2. Login con Spotify → selecciona tu playlist → **Export**
+3. Descarga el CSV
+4. Corre:
+   ```bash
+   python scripts/import_csv.py ~/Downloads/nombre_playlist.csv
+   ```
+5. Las canciones nuevas se agregan al Sheet sin duplicar las existentes
+
+---
+
+## Configurar el cron
+
+Edita `.github/workflows/send_message.yml`:
+
+```yaml
+# Cada día a las 9am Colombia (UTC-5 → 14:00 UTC)
+- cron: '0 14 * * *'
+
+# Cada 2 días a las 9am Colombia
+- cron: '0 14 */2 * *'
+
+# Lunes, miércoles, viernes
+- cron: '0 14 * * 1,3,5'
+
+# Cada hora (solo para pruebas)
+- cron: '0 * * * *'
+```
+
+> GitHub Actions tiene un límite de 2,000 minutos/mes gratis. Con envío diario usas ~1% del límite. Con cron cada hora ~18%.
+
+---
+
+## Cómo cambiar de modo prueba a producción
+
+1. Ve a `github.com/TU_USUARIO/michicator` → **Settings → Secrets → Actions**
+2. Edita el secret `RECIPIENT_OVERRIDE`
+3. Cambia de `test` a `main`
+4. Asegúrate de tener el Chat ID de tu novia en `recipient_telegram_id` en el Sheet
+
+---
+
+## Cómo obtener un Chat ID de Telegram
+
+1. La persona le escribe cualquier cosa a tu bot
+2. Abre esta URL en el navegador (con tu token):
+   ```
+   https://api.telegram.org/botTU_TOKEN/getUpdates
+   ```
+3. Busca `"chat": {"id": NUMERO}` — ese número es el Chat ID
+
+---
+
+## Formato del mensaje
+
+```
+Buenos días, mi michi 🐱
+
+"Eres lo mejor que me ha pasado."
+
+🎵 Hawái — Maluma
+https://open.spotify.com/track/...
+```
+
+Simple. Elegante. Personal.
+
+---
+
+## Roadmap futuro
+
+- [ ] Sync automático con Spotify (cuando levanten la restricción de Development Mode)
+- [ ] Soporte para fotos junto al mensaje
+- [ ] Notificación cuando se acaben las canciones o frases
+
 
 ---
 

@@ -1,22 +1,15 @@
-"""
-Message formatter — builds the Telegram message.
-Style: minimalista y elegante.
-"""
+"""Message formatter — builds the Telegram message."""
 
 
 def format_message(
     song: dict | None = None,
     phrase: dict | None = None,
+    header: str = "Para ti, hoy ✨",
 ) -> str:
-    """
-    Builds the message string depending on what content is available.
-
-    song dict keys: titulo, artista, url
-    phrase dict keys: frase
-    """
     parts: list[str] = []
 
-    parts.append("Para ti, hoy ✨")
+    if header:
+        parts.append(header)
 
     if phrase:
         frase = phrase.get("frase", "").strip()

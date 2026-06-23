@@ -37,8 +37,9 @@ def main() -> None:
         telegram_ids = [tid.strip() for tid in raw_ids.split(",") if tid.strip()]
         print(f" Modo prueba — enviando a {len(telegram_ids)} destinatario(s): {telegram_ids}")
     else:
-        telegram_ids = [config["recipient_telegram_id"].strip()]
-        print(f" Modo principal — enviando a ella (ID: {telegram_ids[0]})")
+        raw_ids = config["recipient_telegram_id"]
+        telegram_ids = [tid.strip() for tid in raw_ids.split(",") if tid.strip()]
+        print(f" Modo principal — enviando a {len(telegram_ids)} destinatario(s)")
 
     # Resolver modo de contenido
     modo = config.get("modo", "song").strip().lower()
@@ -68,7 +69,11 @@ def main() -> None:
         sys.exit(1)
 
     # Construir y enviar mensaje
-    message = format_message(song=song, phrase=phrase)
+    import random
+    raw_header = config.get("mensaje_cabecera", "Para ti, hoy ✨")
+    opciones = [h.strip() for h in raw_header.split("|") if h.strip()]
+    header = random.choice(opciones) if opciones else "Para ti, hoy ✨"
+    message = format_message(song=song, phrase=phrase, header=header)
     print(f"\n--- Mensaje ---\n{message}\n---\n")
 
     for tid in telegram_ids:
