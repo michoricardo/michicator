@@ -2,11 +2,17 @@
 
 > *micho dedicator* — Un bot que le manda canciones y frases a tu michi favorita, cada día.
 
+<p align="center">
+  <img src="https://i.pinimg.com/736x/96/db/b0/96dbb065a1beafad294f4f0d97756ad6.jpg" width="380" alt="michicator" />
+</p>
+
+
+
 ---
 
 ## ¿Qué hace?
 
-Cada día (o cada N días), **michicator** le envía por Telegram a quien tú elijas:
+Cada día (o cada N días o configurable), **michicator** le envía por Telegram a esa persona especial:
 
 - 🎵 Una canción de tu lista — sin repetirse nunca
 - 💬 Una frase que tú escribiste — sin repetirse nunca
@@ -31,22 +37,22 @@ No hay servidor que pagar. GitHub Actions ejecuta el script en la nube gratis.
 
 ---
 
-## ✅ Lo que puede hacer hoy
+##  Lo que puede hacer hoy
 
 - Enviar una canción aleatoria (o secuencial) por Telegram cada día, sin repetirse
 - Enviar frases personalizadas sin repetirse
 - Alternar entre canciones y frases, o mandar ambas juntas
 - Rotar el mensaje de cabecera aleatoriamente entre varias opciones
-- Manejar múltiples destinatarios en modo prueba (tú + amigos)
-- Manejar múltiples destinatarios en modo producción (tu novia + quien quieras)
+- Manejar múltiples destinatarios en modo prueba (tú + amigos que usen telegram y te ayuden a probar la aplicación)
+- Manejar múltiples destinatarios en modo producción (tu novia + tú mismo para que veas lo mismo que ella)
 - Pausar el bot desde el Sheet (sin tocar código)
 - Importar canciones desde un CSV exportado por Exportify
 - Correr automáticamente en la nube con GitHub Actions (gratis)
 - Dispararse manualmente desde GitHub con un click
 
-## ❌ Limitaciones conocidas
+## Lo que no puede hacer hoy este bot
 
-- **No puede leer la playlist de Spotify directamente**: Spotify bloqueó el endpoint `/playlists/{id}/tracks` para apps en Development Mode desde 2024. El workaround es exportar el CSV desde [exportify.app](https://exportify.app) y usar `scripts/import_csv.py`
+- **No puede leer la playlist de Spotify directamente**: Spotify bloqueó el endpoint `/playlists/{id}/tracks` para apps en Development Mode desde 2024. El workaround es exportar el CSV desde [exportify.app](https://exportify.app) y usar `scripts/import_csv.py` FUCK YOU SPOTIFY!!!!!
 - **GitHub Actions tiene delay**: el cron no es exacto al minuto, puede retrasarse hasta 30 min en horas pico (irrelevante para uso diario)
 - **Máximo 5 usuarios testers en Spotify**: restricción de Development Mode (no afecta el funcionamiento del bot)
 
@@ -82,8 +88,8 @@ Crea un Google Sheet con estas pestañas exactas:
 ### Pestaña: `Frases`
 | # | frase | enviada | fecha_envio |
 |---|---|---|---|
-| 1 | Eres lo mejor que me ha pasado este año. | FALSE | |
-| 2 | Te admiro más de lo que sé expresar. | FALSE | |
+| 1 | Frase bonita 1 | FALSE | |
+| 2 | Frase bonita 2 | FALSE | |
 
 ---
 
@@ -155,7 +161,7 @@ Edita `.github/workflows/send_message.yml`:
 - cron: '0 * * * *'
 ```
 
-> GitHub Actions tiene un límite de 2,000 minutos/mes gratis. Con envío diario usas ~1% del límite. Con cron cada hora ~18%.
+> GitHub Actions tiene un límite de 2,000 minutos/mes gratis. Con envío diario usas ~1% del límite. Con cron cada hora ~18%. (De esto no estoy tan seguro la neta, pero no te los acabas según yo xD)
 
 ---
 
@@ -389,4 +395,4 @@ Simple. Elegante. Personal.
 
 ---
 
-*Hecho con 🐱 y mucho amor.*
+*Con ayuda del buen claude sonnet, pero con todo el amor del mundo, te amo!!!*
