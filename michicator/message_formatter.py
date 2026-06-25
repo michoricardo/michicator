@@ -23,10 +23,13 @@ def format_message(
         titulo = song.get("titulo", "").strip()
         artista = song.get("artista", "").strip()
         url = song.get("url", "").strip()
+        dedicatoria = song.get("dedicatoria", "").strip()
 
         song_line = f"🎵 {titulo} — {artista}"
         if url:
             song_line += f"\n{url}"
+        if dedicatoria:
+            song_line += f"\n\n_{dedicatoria}_"
 
         parts.append(f"\n{song_line}")
 
