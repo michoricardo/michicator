@@ -48,6 +48,8 @@ def main() -> None:
         {"command": "cita",      "description": "Idea de cita aleatoria (o: cita finde / cita cotidiana)"},
         {"command": "proxima",   "description": "Ver las próximas citas planeadas"},
         {"command": "realizada", "description": "Marcar una cita como realizada (ej: /realizada 3)"},
+        {"command": "nueva",     "description": "Agregar una nueva idea de cita"},
+        {"command": "cancion",   "description": "Agregar una canción a la lista"},
         {"command": "help",      "description": "Ver todos los comandos disponibles"},
     ]
     data = _api(token, "setMyCommands", {"commands": commands})

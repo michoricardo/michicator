@@ -214,3 +214,56 @@ class SheetsClient:
                 return True
 
         return False
+
+    def add_date_idea(self, detalle: str, tipo: str, referencia: str = "") -> None:
+        """Appends a new date idea to 'Dates con Frida'."""
+        ws = self._spreadsheet.worksheet("Dates con Frida")
+        numero = len(ws.get_all_records()) + 1
+        ws.append_row(
+            [numero, detalle, tipo, referencia, "", "FALSE", ""],
+            value_input_option="USER_ENTERED",
+        )
+
+    def add_song(self, spotify_id: str, titulo: str, artista: str,
+                 url: str, dedicatoria: str = "") -> None:
+        """Appends a new song to 'Canciones'."""
+        ws = self._spreadsheet.worksheet("Canciones")
+        numero = len(ws.get_all_records()) + 1
+        ws.append_row(
+            [numero, spotify_id, titulo, artista, url, dedicatoria, "FALSE", ""],
+            value_input_option="USER_ENTERED",
+        )
+
+    # ------------------------------------------------------------------ #
+    #  Conversation state (flujos interactivos del bot)                   #
+    # ------------------------------------------------------------------ #
+
+    def get_conv_state(self, chat_id: str) -> dict | None:
+        """Returns the active conversation state for a chat_id, or None."""
+        config = self.get_config()
+        raw = config.get(f"conv_{chat_id}", "").strip()
+        if not raw:
+            return None
+        try:
+            return json.loads(raw)
+        except Exception:
+            return None
+
+    def set_conv_state(self, chat_id: str, state: dict) -> None:
+        """Persists conversation state for a chat_id in the Config tab."""
+        key = f"conv_{chat_id}"
+        ws = self._spreadsheet.worksheet("Config")
+        value = json.dumps(state, ensure_ascii=False)
+        cell = ws.find(key, in_column=1)
+        if cell:
+            ws.update_cell(cell.row, 2, value)
+        else:
+            ws.append_row([key, value])
+
+    def clear_conv_state(self, chat_id: str) -> None:
+        """Clears the conversation state for a chat_id."""
+        key = f"conv_{chat_id}"
+        ws = self._spreadsheet.worksheet("Config")
+        cell = ws.find(key, in_column=1)
+        if cell:
+            ws.update_cell(cell.row, 2, "")
