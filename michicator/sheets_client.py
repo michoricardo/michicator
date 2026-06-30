@@ -2,9 +2,11 @@
 Google Sheets client — reads config, canciones, frases; marks items as sent.
 
 Sheet structure expected:
-  - Tab "Config":   columns [clave, valor]
-  - Tab "Canciones": columns [#, spotify_id, titulo, artista, url, enviada, fecha_envio]
-  - Tab "Frases":    columns [#, frase, enviada, fecha_envio]
+  - Tab "Config":          columns [clave, valor]
+  - Tab "Canciones":       columns [#, spotify_id, titulo, artista, url, enviada, fecha_envio]
+  - Tab "Frases":          columns [#, frase, enviada, fecha_envio]
+  - Tab "Dates con Frida": columns [#, detalle, tipo, referencia, fecha, realizada, fecha_realizada]
+      tipo values: cotidiana | finde | cotidiana/finde
 """
 
 import json
@@ -153,3 +155,62 @@ class SheetsClient:
         now = datetime.now(timezone.utc).strftime(_DATE_FMT)
         ws.update_cell(row, 3, "TRUE")        # col C = enviada
         ws.update_cell(row, 4, now)           # col D = fecha_envio
+
+    # ------------------------------------------------------------------ #
+    #  Dates con Frida                                                     #
+    # ------------------------------------------------------------------ #
+
+    def get_date_ideas(self, tipo: str | None = None) -> list[dict]:
+        """
+        Returns unrealized date ideas from "Dates con Frida".
+        tipo: None → all | 'cotidiana' | 'finde'
+        Rows with tipo='cotidiana/finde' match both filters.
+        """
+        ws = self._spreadsheet.worksheet("Dates con Frida")
+        records = ws.get_all_records()
+
+        ideas = []
+        for i, row in enumerate(records, start=2):
+            if str(row.get("realizada", "")).strip().upper() in ("TRUE", "SI", "YES", "1"):
+                continue
+
+            if tipo:
+                row_tipo = str(row.get("tipo", "")).strip().lower()
+                if tipo == "cotidiana" and row_tipo not in ("cotidiana", "cotidiana/finde"):
+                    continue
+                if tipo == "finde" and row_tipo not in ("finde", "cotidiana/finde"):
+                    continue
+
+            ideas.append({**row, "_row": i})
+
+        return ideas
+
+    def get_upcoming_dates(self) -> list[dict]:
+        """Returns unrealized date ideas that have a fecha set, sorted by date."""
+        ws = self._spreadsheet.worksheet("Dates con Frida")
+        records = ws.get_all_records()
+
+        upcoming = []
+        for i, row in enumerate(records, start=2):
+            if str(row.get("realizada", "")).strip().upper() in ("TRUE", "SI", "YES", "1"):
+                continue
+            if not str(row.get("fecha", "")).strip():
+                continue
+            upcoming.append({**row, "_row": i})
+
+        upcoming.sort(key=lambda r: str(r.get("fecha", "")))
+        return upcoming
+
+    def mark_date_done(self, numero: int) -> bool:
+        """Marks a date idea as realized by its # number. Returns True if found."""
+        ws = self._spreadsheet.worksheet("Dates con Frida")
+        records = ws.get_all_records()
+
+        for i, row in enumerate(records, start=2):
+            if str(row.get("#", "")).strip() == str(numero):
+                now = datetime.now(timezone.utc).strftime(_DATE_FMT)
+                ws.update_cell(i, 6, "TRUE")  # col F = realizada
+                ws.update_cell(i, 7, now)     # col G = fecha_realizada
+                return True
+
+        return False

@@ -24,6 +24,7 @@ Un bot de Telegram que te manda, de forma automática:
 - 💬 Una frase — escrita por él en algún momento en que pensó en ti
 - 🌻 Los miércoles: una pregunta especial (los *Miércoles de Garrapata*) Ricardo cree que conocerse es muy divertido.
 - Un contador de cuántos días llevan juntos 🧡
+- 🗓 **Citas con Frida** — un espacio donde Ricardo guarda ideas de cosas que quiere hacer contigo, que puedes consultar cuando quieras escribiéndole al bot directamente
 
 Lo que lo hace diferente a cualquier bot genérico es que **todo el contenido fue escrito y elegido a mano**. Cada canción viene de una playlist que fue armando contigo en mente. Cada frase la escribió él mismo. El bot solo es el cartero,el remitente siempre es Ricardo.
 
@@ -49,14 +50,21 @@ Tres cosas trabajando juntas:
 
 ### 📋 La libreta mágica — Google Sheets
 
-Hay una hoja de cálculo de Google que es el cerebro del bot. Tiene cuatro secciones:
+Hay una hoja de cálculo de Google que es el cerebro del bot. Tiene cinco secciones:
 
 - **Config** — los ajustes generales: ¿está activo el bot?, ¿qué día empezaron juntos?, ¿a quién le llegan los mensajes?
 - **Canciones** — la lista de canciones que Ricardo eligió para ti, con la razón personal de cada una
 - **Frases** — frases que él escribió pensando en ti, en distintos momentos
 - **Preguntas** — las preguntas especiales de los miércoles
+- **Dates con Frida** — ideas de citas que Ricardo fue guardando: puede ser una cotidiana para el miércoles que se ven, o algo más especial para el finde. Algunas tienen fecha planeada, otras solo esperan el momento indicado
 
 Cada vez que el bot manda algo, marca esa fila como "enviada" para que nunca se repita.
+
+### 💬 El bot que responde — Vercel
+
+Además de mandar mensajes automáticos, michicator ahora también *escucha*. Hay una pequeña función serverless desplegada en Vercel que recibe los mensajes que le escribes al bot y te responde al instante. Sin servidores que pagar, sin nada que mantener prendido — solo se activa cuando tú le escribes algo.
+
+Esto es lo que hace posible los comandos de citas: en cuanto escribes `/cita` en el chat, Telegram le avisa a Vercel, Vercel lee el Sheet, y en segundos tienes una sugerencia.
 
 ### ⏰ El reloj automático — GitHub Actions
 
@@ -113,6 +121,7 @@ Para la curiosidad técnica — el stack completo:
 | Pieza | Tecnología | Por qué |
 |---|---|---|
 | Scheduler | GitHub Actions (cron) | Gratis, confiable, sin servidor propio |
+| Comandos interactivos | Vercel (serverless) | Responde al instante, costo $0 cuando no se usa |
 | Contenido y estado | Google Sheets (gspread) | Fácil de editar sin tocar código |
 | Mensajes | Telegram Bot API | Simple y directo, sin instalar nada |
 | Canciones | CSV de [exportify.app](https://exportify.app) | Spotify bloqueó su API en modo dev en 2024 😤 |
@@ -124,6 +133,8 @@ No hay servidor que pagar. Todo corre en la nube de forma gratuita.
 
 ```
 michicator/
+├── api/
+│   └── webhook.py             # Función serverless (Vercel) — recibe comandos del bot
 ├── michicator/
 │   ├── message_formatter.py   # Arma el texto del mensaje
 │   ├── sheets_client.py       # Lee y escribe en Google Sheets
@@ -131,8 +142,10 @@ michicator/
 │   └── spotify_client.py      # Opcional: sync con Spotify (bloqueado hoy)
 ├── scripts/
 │   ├── send_daily.py          # Script principal — el que corre cada miércoles
+│   ├── setup_webhook.py       # Registra la URL del webhook en Telegram (una sola vez)
 │   ├── import_csv.py          # Importa canciones desde un CSV de Exportify
 │   └── get_spotify_token.py   # Obtiene el token de Spotify (una sola vez)
+├── vercel.json                # Configuración del deploy en Vercel
 └── .github/workflows/
     └── send_message.yml       # Le dice a GitHub cuándo y cómo correr el bot
 ```
@@ -174,6 +187,18 @@ michicator/
 |---|---|---|---|
 | 1 | ¿Cuál es tu recuerdo favorito de este año? | FALSE | |
 
+### Pestaña: `Dates con Frida`
+
+| # | detalle | tipo | referencia | fecha | realizada | fecha_realizada |
+|---|---|---|---|---|---|---|
+| 1 | Ir a Chipinque con x amigos| finde | https://maps.google.com/... | 2026-07-12 | FALSE | |
+| 2 | Ir por donitas y a caminar | cotidiana | | | FALSE | |
+| 3 | Ver el sunset en la loma | cotidiana/finde | https://tiktok.com/... | | FALSE | |
+
+- **tipo** puede ser `cotidiana` (para los miércoles), `finde` (viernes/sábado/domingo) o `cotidiana/finde` (cualquier día sirve)
+- **referencia** es opcional — puede ser un link de Google Maps, TikTok, YouTube, o cualquier cosa relevante
+- **fecha** es opcional — solo cuando ya tienen algo planeado
+
 ---
 
 ## Configuración de Secrets en GitHub
@@ -186,6 +211,32 @@ Los datos sensibles (tokens, IDs) viven como *secrets* en GitHub — cifrados, n
 | `GOOGLE_SHEET_ID` | ID del Google Sheet (en la URL) |
 | `GOOGLE_CREDENTIALS_JSON` | JSON de la cuenta de servicio de Google Cloud |
 | `RECIPIENT_OVERRIDE` | `test` (le llega a Ricardo) o `main` (te llega a ti) |
+
+Y en **Vercel** (para los comandos interactivos):
+
+| Variable | Descripción |
+|---|---|
+| `TELEGRAM_BOT_TOKEN` | El mismo token del bot |
+| `GOOGLE_SHEET_ID` | El mismo ID del Sheet |
+| `GOOGLE_CREDENTIALS_JSON` | El mismo JSON de la cuenta de servicio |
+| `TELEGRAM_WEBHOOK_SECRET` | Un texto secreto inventado — verifica que los mensajes vengan de Telegram y no de otra fuente |
+
+---
+
+## Citas con Frida — comandos del bot 🗓
+
+Esta es la parte nueva. Puedes escribirle directamente al bot en Telegram y te responde al instante:
+
+| Comando | Qué hace |
+|---|---|
+| `/cita` | Te sugiere una idea de cita al azar (de las que quedan pendientes) |
+| `/cita finde` | Solo ideas para fin de semana |
+| `/cita cotidiana` | Solo ideas para un miércoles o día entre semana |
+| `/proxima` | Te muestra las próximas citas que ya tienen fecha planeada |
+| `/realizada 3` | Marca la cita #3 como hecha ✅ |
+| `/help` | Lista todos los comandos disponibles |
+
+Ricardo va llenando la pestaña `Dates con Frida` del Sheet con ideas mientras las va encontrando — un video en TikTok, un lugar que le recomendaron, algo que vio y pensó *"esto le va a gustar a Frida"*. El bot las guarda hasta que ustedes las hagan realidad.
 
 ---
 
@@ -207,7 +258,11 @@ Si Ricardo quiere mandarte algo ahora mismo sin esperar al miércoles, puede ir 
 ## Roadmap futuro (por si hay algo que quieras agregarle)
 Algunas ideas, por ejemplo:
 
+- [x] **Bot interactivo con comandos** — ya puedes escribirle al bot y te responde 🎉
+- [x] **Citas con Frida** — ideas de citas guardadas y consultables desde el chat
 - [ ] **Hitos de días juntos** — mensaje especial automático al llegar a 100, 200, 365 días
+- [ ] **Recuerdos** — cuando marquen una cita como realizada, el bot les pide una nota corta; en el aniversario hace un recap de todo lo que hicieron
+- [ ] **Fechas especiales** — aviso automático antes de cumpleaños de amigos, el aniversario de su primera cita, etc.
 - [ ] **Mini retos de pareja** — pestaña `Retos` con desafíos semanales
 - [ ] **Notificación a Ricardo** — confirmación de que el mensaje se envió exitosamente
 - [ ] **Aviso cuando se acabe el contenido** — alerta antes de que el bot se quede sin canciones o frases
