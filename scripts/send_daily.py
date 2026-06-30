@@ -42,12 +42,6 @@ def main() -> None:
         print("ℹ michicator está pausado (activo=false en Config).")
         return
 
-    # Verificar si ya se envió hoy
-    today_str = date.today().isoformat()
-    if config.get("last_sent_date", "").strip() == today_str:
-        print(f"ℹ Mensaje ya enviado hoy ({today_str}). Omitiendo.")
-        return
-
     # Elegir destinatario(s)
     if recipient_mode == "test":
         raw_ids = config["test_telegram_id"]
@@ -133,10 +127,6 @@ def main() -> None:
     if question:
         sheets.mark_question_sent(question["_row"])
         print(f"   Pregunta marcada como enviada.")
-
-    # Registrar fecha de envío
-    sheets.update_config("last_sent_date", today_str)
-    print(f"   Fecha de envío registrada: {today_str}")
 
     # Actualizar estado de alternado
     if config.get("modo", "").strip().lower() == "alternate":
