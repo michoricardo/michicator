@@ -215,10 +215,14 @@ def _process_update(update: dict) -> None:
             state = None
         if state:
             flow = state.get("flow")
-            if flow == "nueva":
-                _continue_nueva(chat_id, text, state, sh)
-            elif flow == "cancion":
-                _continue_cancion(chat_id, text, state, sh)
+            try:
+                if flow == "nueva":
+                    _continue_nueva(chat_id, text, state, sh)
+                elif flow == "cancion":
+                    _continue_cancion(chat_id, text, state, sh)
+            except Exception as e:
+                print(f"[webhook] flow error ({type(e).__name__}): {e}", flush=True)
+                _send(chat_id, f"Error en flujo: {type(e).__name__}: {str(e)[:150]}")
         return
 
     # Comandos
@@ -231,46 +235,51 @@ def _process_update(update: dict) -> None:
         except Exception:
             pass
 
-    if command == "/nueva":
-        _start_nueva(chat_id, sh)
+    try:
+        if command == "/nueva":
+            _start_nueva(chat_id, sh)
 
-    elif command == "/cancion":
-        _start_cancion(chat_id, sh)
+        elif command == "/cancion":
+            _start_cancion(chat_id, sh)
 
-    elif command == "/cita":
-        tipo = parts[1] if len(parts) > 1 else None
-        if tipo and tipo not in ("finde", "cotidiana"):
-            _send(chat_id, "Uso: /cita, /cita finde, o /cita cotidiana")
-            return
-        ideas = sh.get_date_ideas(tipo=tipo)
-        if not ideas:
-            filtro = f" de tipo *{tipo}*" if tipo else ""
-            _send(chat_id, f"No hay ideas pendientes{filtro} ")
-            return
-        _send(chat_id, _format_idea(random.choice(ideas)))
+        elif command == "/cita":
+            tipo = parts[1] if len(parts) > 1 else None
+            if tipo and tipo not in ("finde", "cotidiana"):
+                _send(chat_id, "Uso: /cita, /cita finde, o /cita cotidiana")
+                return
+            ideas = sh.get_date_ideas(tipo=tipo)
+            if not ideas:
+                filtro = f" de tipo *{tipo}*" if tipo else ""
+                _send(chat_id, f"No hay ideas pendientes{filtro} ")
+                return
+            _send(chat_id, _format_idea(random.choice(ideas)))
 
-    elif command == "/proxima":
-        upcoming = sh.get_upcoming_dates()
-        if not upcoming:
-            _send(chat_id, "No hay citas planeadas con fecha aún ")
-            return
-        lines = [" *Próximas citas:*\n"]
-        for idea in upcoming[:3]:
-            lines.append(_format_idea(idea, show_fecha=True))
-        _send(chat_id, "\n\n".join(lines))
+        elif command == "/proxima":
+            upcoming = sh.get_upcoming_dates()
+            if not upcoming:
+                _send(chat_id, "No hay citas planeadas con fecha aún ")
+                return
+            lines = [" *Próximas citas:*\n"]
+            for idea in upcoming[:3]:
+                lines.append(_format_idea(idea, show_fecha=True))
+            _send(chat_id, "\n\n".join(lines))
 
-    elif command == "/realizada":
-        if len(parts) < 2 or not parts[1].isdigit():
-            _send(chat_id, "Uso: /realizada <número> — ej. /realizada 3")
-            return
-        numero = int(parts[1])
-        if sh.mark_date_done(numero):
-            _send(chat_id, f" Cita #{numero} marcada como realizada!")
+        elif command == "/realizada":
+            if len(parts) < 2 or not parts[1].isdigit():
+                _send(chat_id, "Uso: /realizada <número> — ej. /realizada 3")
+                return
+            numero = int(parts[1])
+            if sh.mark_date_done(numero):
+                _send(chat_id, f" Cita #{numero} marcada como realizada!")
+            else:
+                _send(chat_id, f"No encontré la cita #{numero} ")
+
         else:
-            _send(chat_id, f"No encontré la cita #{numero} ")
+            _send(chat_id, "Comando no reconocido. Escribe /help para ver opciones.")
 
-    else:
-        _send(chat_id, "Comando no reconocido. Escribe /help para ver opciones.")
+    except Exception as e:
+        print(f"[webhook] command error ({type(e).__name__}): {e}", flush=True)
+        _send(chat_id, f"Error en comando {command}: {type(e).__name__}: {str(e)[:150]}")
 
 
 # ------------------------------------------------------------------ #
