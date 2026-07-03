@@ -14,7 +14,14 @@ import os
 from datetime import datetime, timezone
 
 import gspread
-from gspread.exceptions import CellNotFound
+try:
+    from gspread.exceptions import CellNotFound
+except ImportError:
+    # gspread < 5 exposes it at the top level
+    try:
+        CellNotFound = gspread.exceptions.CellNotFound  # type: ignore
+    except AttributeError:
+        CellNotFound = Exception  # fallback: catch all
 from google.oauth2.service_account import Credentials
 
 
