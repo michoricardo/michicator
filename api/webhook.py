@@ -181,12 +181,25 @@ def _process_update(update: dict) -> None:
     if not text:
         return
 
-    sheets = SheetsClient()
+    # Comandos que NO necesitan Google Sheets
+    if text.lower().startswith("/help"):
+        telegram_client.send_message(chat_id, _HELP_TEXT)
+        return
 
-    # Si hay un flujo conversacional activo y el mensaje no es un comando nuevo,
-    # continuar el flujo en lugar de procesar como comando
+    # Para todo lo demás, crear SheetsClient
+    try:
+        sheets = SheetsClient()
+    except Exception as e:
+        print(f"[webhook] SheetsClient init error: {e}", flush=True)
+        telegram_client.send_message(chat_id, "⚠️ Error conectando con el Sheet. Intenta de nuevo.")
+        return
+
+    # Mensajes sin / → continuar flujo conversacional si hay uno activo
     if not text.startswith("/"):
-        state = sheets.get_conv_state(chat_id)
+        try:
+            state = sheets.get_conv_state(chat_id)
+        except Exception:
+            state = None
         if state:
             flow = state.get("flow")
             if flow == "nueva":
@@ -195,20 +208,18 @@ def _process_update(update: dict) -> None:
                 _continue_cancion(chat_id, text, state, sheets)
         return
 
-    # Comando nuevo — cancela cualquier flujo previo
+    # Comandos
     parts = text.lower().split()
     command = parts[0].split("@")[0]
 
-    # Cancelar flujo activo si el usuario manda un comando nuevo
-    if command in ("/nueva", "/cancion"):
-        pass  # estos arrancan su propio flujo abajo
-    else:
-        sheets.clear_conv_state(chat_id)
+    # Cancelar flujo activo al recibir un comando nuevo (excepto los que arrancan flujo)
+    if command not in ("/nueva", "/cancion"):
+        try:
+            sheets.clear_conv_state(chat_id)
+        except Exception:
+            pass
 
-    if command == "/help":
-        telegram_client.send_message(chat_id, _HELP_TEXT)
-
-    elif command == "/nueva":
+    if command == "/nueva":
         _start_nueva(chat_id, sheets)
 
     elif command == "/cancion":
