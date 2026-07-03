@@ -198,9 +198,13 @@ def _process_update(update: dict) -> None:
     # Para todo lo demás, inicializar SheetsClient
     try:
         sh = _sheets()
+    except KeyError as e:
+        print(f"[webhook] SheetsClient init error (KeyError): {e}", flush=True)
+        _send(chat_id, f"Error: falta variable de entorno {e} en Vercel.")
+        return
     except Exception as e:
-        print(f"[webhook] SheetsClient init error: {e}", flush=True)
-        _send(chat_id, " Error conectando con el Sheet. Intenta de nuevo.")
+        print(f"[webhook] SheetsClient init error ({type(e).__name__}): {e}", flush=True)
+        _send(chat_id, f"Error conectando con el Sheet: {type(e).__name__}: {str(e)[:200]}")
         return
 
     # Mensajes sin / → continuar flujo conversacional si hay uno activo
