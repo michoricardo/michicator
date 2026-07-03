@@ -265,7 +265,7 @@ def _process_update(update: dict) -> None:
             _send(chat_id, f"No encontré la cita #{numero} 🤔")
 
     else:
-        telegram_client.send_message(chat_id, "Comando no reconocido. Escribe /help para ver opciones.")
+        _send(chat_id, "Comando no reconocido. Escribe /help para ver opciones.")
 
 
 # ------------------------------------------------------------------ #
@@ -302,16 +302,6 @@ class handler(BaseHTTPRequestHandler):
 
     def log_message(self, format, *args):
         pass
-  /help             → command list
-"""
-
-import json
-import os
-import random
-import sys
-from http.server import BaseHTTPRequestHandler
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from michicator.sheets_client import SheetsClient
 from michicator import telegram_client
