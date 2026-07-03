@@ -14,6 +14,7 @@ import os
 from datetime import datetime, timezone
 
 import gspread
+from gspread.exceptions import CellNotFound
 from google.oauth2.service_account import Credentials
 
 
@@ -48,9 +49,11 @@ class SheetsClient:
 
     def update_config(self, key: str, value: str) -> None:
         ws = self._spreadsheet.worksheet("Config")
-        cell = ws.find(key, in_column=1)
-        if cell:
+        try:
+            cell = ws.find(key, in_column=1)
             ws.update_cell(cell.row, 2, value)
+        except CellNotFound:
+            ws.append_row([key, value])
 
     # ------------------------------------------------------------------ #
     #  Canciones                                                           #
@@ -254,16 +257,18 @@ class SheetsClient:
         key = f"conv_{chat_id}"
         ws = self._spreadsheet.worksheet("Config")
         value = json.dumps(state, ensure_ascii=False)
-        cell = ws.find(key, in_column=1)
-        if cell:
+        try:
+            cell = ws.find(key, in_column=1)
             ws.update_cell(cell.row, 2, value)
-        else:
+        except CellNotFound:
             ws.append_row([key, value])
 
     def clear_conv_state(self, chat_id: str) -> None:
         """Clears the conversation state for a chat_id."""
         key = f"conv_{chat_id}"
         ws = self._spreadsheet.worksheet("Config")
-        cell = ws.find(key, in_column=1)
-        if cell:
+        try:
+            cell = ws.find(key, in_column=1)
             ws.update_cell(cell.row, 2, "")
+        except CellNotFound:
+            pass
