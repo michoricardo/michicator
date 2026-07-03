@@ -52,7 +52,7 @@ _HELP_TEXT = (
     "/cita finde — solo fines de semana\n"
     "/cita cotidiana — solo entre semana\n"
     "/proxima — próximas citas planeadas\n"
-    "/realizada <#> — marcar cita como hecha ✅\n"
+    "/realizada <#> — marcar cita como hecha \n"
     "/nueva — agregar una idea de cita\n"
     "/cancion — agregar una canción\n"
     "/help — esta ayuda"
@@ -69,17 +69,18 @@ def _format_idea(idea: dict, show_fecha: bool = False) -> str:
     referencia = str(idea.get("referencia", "")).strip()
     fecha = str(idea.get("fecha", "")).strip()
 
-    tipo_emoji = {
-        "cotidiana": "🌿",
-        "finde": "🎉",
-        "cotidiana/finde": "✨",
-    }.get(tipo, "📍")
+    tipo_label = {
+        "cotidiana": "[cotidiana]",
+        "finde": "[finde]",
+        "cotidiana/finde": "[ambas]",
+    }.get(tipo, "")
+    prefix = tipo_label + " " if tipo_label else ""
 
-    lines = [f"{tipo_emoji} *#{numero} — {detalle}*"]
+    lines = [prefix + "*#" + str(numero) + " - " + detalle + "*"]
     if tipo:
         lines.append(f"_{tipo}_")
     if show_fecha and fecha:
-        lines.append(f"📅 {fecha}")
+        lines.append(f" {fecha}")
     if referencia:
         lines.append(referencia)
 
@@ -134,7 +135,7 @@ def _continue_nueva(chat_id: str, text: str, state: dict, sh) -> None:
         data["referencia"] = "" if text.lower().strip() == "no" else text.strip()
         sh.add_date_idea(data["detalle"], data["tipo"], data.get("referencia", ""))
         sh.clear_conv_state(chat_id)
-        _send(chat_id, "✅ ¡Guardado en *Dates con Frida*! 🗓")
+        _send(chat_id, "¡Guardado en *Dates con Frida*! ")
 
 
 def _continue_cancion(chat_id: str, text: str, state: dict, sh) -> None:
@@ -171,7 +172,7 @@ def _continue_cancion(chat_id: str, text: str, state: dict, sh) -> None:
             dedicatoria=data.get("dedicatoria", ""),
         )
         sh.clear_conv_state(chat_id)
-        _send(chat_id, f"✅ *{data['titulo']} — {data['artista']}* guardada en Canciones 🎵")
+        _send(chat_id, f" *{data['titulo']} — {data['artista']}* guardada en Canciones 🎵")
 
 
 # ------------------------------------------------------------------ #
@@ -199,7 +200,7 @@ def _process_update(update: dict) -> None:
         sh = _sheets()
     except Exception as e:
         print(f"[webhook] SheetsClient init error: {e}", flush=True)
-        _send(chat_id, "⚠️ Error conectando con el Sheet. Intenta de nuevo.")
+        _send(chat_id, " Error conectando con el Sheet. Intenta de nuevo.")
         return
 
     # Mensajes sin / → continuar flujo conversacional si hay uno activo
@@ -240,16 +241,16 @@ def _process_update(update: dict) -> None:
         ideas = sh.get_date_ideas(tipo=tipo)
         if not ideas:
             filtro = f" de tipo *{tipo}*" if tipo else ""
-            _send(chat_id, f"No hay ideas pendientes{filtro} 😅")
+            _send(chat_id, f"No hay ideas pendientes{filtro} ")
             return
         _send(chat_id, _format_idea(random.choice(ideas)))
 
     elif command == "/proxima":
         upcoming = sh.get_upcoming_dates()
         if not upcoming:
-            _send(chat_id, "No hay citas planeadas con fecha aún 📅")
+            _send(chat_id, "No hay citas planeadas con fecha aún ")
             return
-        lines = ["📅 *Próximas citas:*\n"]
+        lines = [" *Próximas citas:*\n"]
         for idea in upcoming[:3]:
             lines.append(_format_idea(idea, show_fecha=True))
         _send(chat_id, "\n\n".join(lines))
@@ -260,9 +261,9 @@ def _process_update(update: dict) -> None:
             return
         numero = int(parts[1])
         if sh.mark_date_done(numero):
-            _send(chat_id, f"✅ Cita #{numero} marcada como realizada!")
+            _send(chat_id, f" Cita #{numero} marcada como realizada!")
         else:
-            _send(chat_id, f"No encontré la cita #{numero} 🤔")
+            _send(chat_id, f"No encontré la cita #{numero} ")
 
     else:
         _send(chat_id, "Comando no reconocido. Escribe /help para ver opciones.")
@@ -303,17 +304,11 @@ class handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
 
-from michicator.sheets_client import SheetsClient
-from michicator import telegram_client
-
-
-_HELP_TEXT = (
-    "🗓 *Dates con Frida — comandos:*\n\n"
     "/cita — idea aleatoria\n"
     "/cita finde — solo fines de semana\n"
     "/cita cotidiana — solo entre semana\n"
     "/proxima — próximas citas planeadas\n"
-    "/realizada <#> — marcar cita como hecha ✅\n"
+    "/realizada <#> — marcar cita como hecha \n"
     "/help — esta ayuda"
 )
 
@@ -335,7 +330,7 @@ def _format_idea(idea: dict, show_fecha: bool = False) -> str:
     if tipo:
         lines.append(f"_{tipo}_")
     if show_fecha and fecha:
-        lines.append(f"📅 {fecha}")
+        lines.append(f" {fecha}")
     if referencia:
         lines.append(referencia)
 
@@ -377,7 +372,7 @@ def _process_update(update: dict) -> None:
             filtro = f" de tipo *{tipo}*" if tipo else ""
             telegram_client.send_message(
                 chat_id,
-                f"No hay ideas pendientes{filtro} 😅",
+                f"No hay ideas pendientes{filtro} ",
             )
             return
 
@@ -389,11 +384,11 @@ def _process_update(update: dict) -> None:
         if not upcoming:
             telegram_client.send_message(
                 chat_id,
-                "No hay citas planeadas con fecha aún 📅",
+                "No hay citas planeadas con fecha aún ",
             )
             return
 
-        lines = ["📅 *Próximas citas:*\n"]
+        lines = [" *Próximas citas:*\n"]
         for idea in upcoming[:3]:
             lines.append(_format_idea(idea, show_fecha=True))
         telegram_client.send_message(chat_id, "\n\n".join(lines))
@@ -409,9 +404,9 @@ def _process_update(update: dict) -> None:
         numero = int(parts[1])
         found = sheets.mark_date_done(numero)
         if found:
-            telegram_client.send_message(chat_id, f"✅ Cita #{numero} marcada como realizada!")
+            telegram_client.send_message(chat_id, f" Cita #{numero} marcada como realizada!")
         else:
-            telegram_client.send_message(chat_id, f"No encontré la cita #{numero} 🤔")
+            telegram_client.send_message(chat_id, f"No encontré la cita #{numero} ")
 
     else:
         telegram_client.send_message(chat_id, f"Comando no reconocido. Escribe /help para ver opciones.")
