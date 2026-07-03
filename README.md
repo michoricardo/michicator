@@ -233,7 +233,9 @@ Esta es la parte nueva. Puedes escribirle directamente al bot en Telegram y te r
 | `/cita finde` | Solo ideas para fin de semana |
 | `/cita cotidiana` | Solo ideas para un miércoles o día entre semana |
 | `/proxima` | Te muestra las próximas citas que ya tienen fecha planeada |
-| `/realizada 3` | Marca la cita #3 como hecha ✅ |
+| `/realizada 3` | Marca la cita #3 como hecha |
+| `/nueva` | Agrega una idea de cita nueva (flujo conversacional paso a paso) |
+| `/cancion` | Agrega una canción nueva con link de Spotify y dedicatoria |
 | `/help` | Lista todos los comandos disponibles |
 
 Ricardo va llenando la pestaña `Dates con Frida` del Sheet con ideas mientras las va encontrando — un video en TikTok, un lugar que le recomendaron, algo que vio y pensó *"esto le va a gustar a Frida"*. El bot las guarda hasta que ustedes las hagan realidad.
