@@ -34,16 +34,14 @@ def _sheets():
     from michicator.sheets_client import SheetsClient
     return SheetsClient()
 
-def _send(chat_id: str, text: str) -> None:
+def _send(chat_id: str, text: str, markdown: bool = True) -> None:
     import requests
     token = os.environ["TELEGRAM_BOT_TOKEN"]
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    requests.post(
-        url,
-        json={"chat_id": chat_id, "text": text, "parse_mode": "Markdown",
-              "disable_web_page_preview": False},
-        timeout=15,
-    )
+    payload = {"chat_id": chat_id, "text": text}
+    if markdown:
+        payload["parse_mode"] = "Markdown"
+    requests.post(url, json=payload, timeout=8)
 
 
 _HELP_TEXT = (
@@ -200,11 +198,11 @@ def _process_update(update: dict) -> None:
         sh = _sheets()
     except KeyError as e:
         print(f"[webhook] SheetsClient init error (KeyError): {e}", flush=True)
-        _send(chat_id, f"Error: falta variable de entorno {e} en Vercel.")
+        _send(chat_id, f"Error: falta variable {e} en Vercel", markdown=False)
         return
     except Exception as e:
         print(f"[webhook] SheetsClient init error ({type(e).__name__}): {e}", flush=True)
-        _send(chat_id, f"Error conectando con el Sheet: {type(e).__name__}: {str(e)[:200]}")
+        _send(chat_id, f"Sheet error ({type(e).__name__}): {str(e)[:120]}", markdown=False)
         return
 
     # Mensajes sin / → continuar flujo conversacional si hay uno activo
@@ -279,7 +277,7 @@ def _process_update(update: dict) -> None:
 
     except Exception as e:
         print(f"[webhook] command error ({type(e).__name__}): {e}", flush=True)
-        _send(chat_id, f"Error en comando {command}: {type(e).__name__}: {str(e)[:150]}")
+        _send(chat_id, f"Error en comando {command}: {type(e).__name__}: {str(e)[:120]}", markdown=False)
 
 
 # ------------------------------------------------------------------ #
