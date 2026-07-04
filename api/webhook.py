@@ -18,6 +18,7 @@ Commands handled:
 """
 
 import json
+import html
 import os
 import random
 import re
@@ -38,13 +39,17 @@ def _sheets():
     from michicator.sheets_client import SheetsClient
     return SheetsClient()
 
-def _send(chat_id: str, text: str, markdown: bool = True) -> None:
+def _esc(text) -> str:
+    """HTML-escape user content for Telegram's HTML parse mode."""
+    return html.escape(str(text))
+
+def _send(chat_id: str, text: str, parse_mode: str = "HTML") -> None:
     import requests
     token = os.environ["TELEGRAM_BOT_TOKEN"]
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {"chat_id": chat_id, "text": text}
-    if markdown:
-        payload["parse_mode"] = "Markdown"
+    if parse_mode:
+        payload["parse_mode"] = parse_mode
     resp = requests.post(url, json=payload, timeout=8)
     if not resp.ok:
         print(f"[_send] Telegram error {resp.status_code}: {resp.text[:200]}", flush=True)
@@ -52,7 +57,7 @@ def _send(chat_id: str, text: str, markdown: bool = True) -> None:
 
 
 _HELP_TEXT = (
-    "*Comandos disponibles:*\n\n"
+    "<b>Comandos disponibles:</b>\n\n"
     "/cita — idea de cita aleatoria\n"
     "/cita finde — solo fines de semana\n"
     "/cita cotidiana — solo entre semana\n"
@@ -61,7 +66,7 @@ _HELP_TEXT = (
     "/lista cotidiana — pendientes cotidianas\n"
     "/lista historial — todas, incluyendo ya realizadas\n"
     "/proxima — próximas citas planeadas\n"
-    "/realizada <#> — marcar cita como hecha \n"
+    "/realizada # — marcar cita como hecha \n"
     "/nueva — agregar una idea de cita\n"
     "/cancion — agregar una canción\n"
     "/help — esta ayuda"
@@ -73,10 +78,10 @@ _HELP_TEXT = (
 
 def _format_idea(idea: dict, show_fecha: bool = False) -> str:
     numero = idea.get("#", "?")
-    detalle = str(idea.get("detalle", "")).strip()
+    detalle = _esc(idea.get("detalle", ""))
     tipo = str(idea.get("tipo", "")).strip().lower()
-    referencia = str(idea.get("referencia", "")).strip()
-    fecha = str(idea.get("fecha", "")).strip()
+    referencia = _esc(idea.get("referencia", ""))
+    fecha = _esc(idea.get("fecha", ""))
 
     tipo_label = {
         "cotidiana": "[cotidiana]",
@@ -85,9 +90,9 @@ def _format_idea(idea: dict, show_fecha: bool = False) -> str:
     }.get(tipo, "")
     prefix = tipo_label + " " if tipo_label else ""
 
-    lines = [prefix + "*#" + str(numero) + " - " + detalle + "*"]
+    lines = [prefix + f"<b>#{numero} - {detalle}</b>"]
     if tipo:
-        lines.append(f"_{tipo}_")
+        lines.append(f"<i>{_esc(tipo)}</i>")
     if show_fecha and fecha:
         lines.append(f" {fecha}")
     if referencia:
@@ -107,7 +112,7 @@ def _cmd_lista(chat_id: str, tipo: str | None, sh, historial: bool = False) -> N
     else:
         ideas = sh.get_date_ideas(tipo=tipo)
     if not ideas:
-        filtro = f" de tipo *{tipo}*" if tipo else ""
+        filtro = f" de tipo <b>{tipo}</b>" if tipo else ""
         _send(chat_id, f"No hay citas{filtro} \U0001f937")
         return
 
@@ -115,10 +120,10 @@ def _cmd_lista(chat_id: str, tipo: str | None, sh, historial: bool = False) -> N
         pendientes = [i for i in ideas if not i.get("_done")]
         realizadas = [i for i in ideas if i.get("_done")]
         tipo_label = {"finde": "finde", "cotidiana": "cotidiana"}.get(tipo or "", "todas")
-        header = f"\U0001f4d6 *Historial de citas \u2014 {tipo_label} ({len(pendientes)} pendientes, {len(realizadas)} realizadas):*"
+        header = f"\U0001f4d6 <b>Historial de citas \u2014 {tipo_label} ({len(pendientes)} pendientes, {len(realizadas)} realizadas):</b>"
     else:
         tipo_label = {"finde": "finde", "cotidiana": "cotidiana"}.get(tipo or "", "todas")
-        header = f"\U0001f4cb *Citas pendientes \u2014 {tipo_label} ({len(ideas)}):*"
+        header = f"\U0001f4cb <b>Citas pendientes \u2014 {tipo_label} ({len(ideas)}):</b>"
 
     lines = []
     for idea in ideas:
@@ -134,13 +139,13 @@ def _cmd_lista(chat_id: str, tipo: str | None, sh, historial: bool = False) -> N
         # dentro de _..._ como link malformado y rechaza el mensaje silenciosamente
         t_italic = {"cotidiana": "cotidiana", "finde": "finde", "cotidiana/finde": "ambas"}.get(t, t)
         done_mark = " \u2705" if done else ""
-        line = f"*#{numero}* {detalle} _{t_italic}_{done_mark}"
+        line = f"<b>#{numero}</b> {_esc(detalle)} <i>{t_italic}</i>{done_mark}"
         if fecha:
-            line += f"\n   \U0001f4c5 {fecha}"
+            line += f"\n   \U0001f4c5 {_esc(fecha)}"
         if done and fecha_realizada:
-            line += f"\n   \u2705 realizada: {fecha_realizada}"
+            line += f"\n   \u2705 realizada: {_esc(fecha_realizada)}"
         if referencia:
-            line += f"\n   \U0001f517 {referencia}"
+            line += f"\n   \U0001f517 {_esc(referencia)}"
         lines.append(line)
 
     # Respetar el límite de 4096 caracteres de Telegram
@@ -162,12 +167,12 @@ def _cmd_lista(chat_id: str, tipo: str | None, sh, historial: bool = False) -> N
 
 def _start_nueva(chat_id: str, sh) -> None:
     sh.set_conv_state(chat_id, {"flow": "nueva", "step": "detalle", "data": {}})
-    _send(chat_id, "*Nueva idea de cita*\n\n¿Que quieren hacer? Describe la idea:")
+    _send(chat_id, "<b>Nueva idea de cita</b>\n\n¿Que quieren hacer? Describe la idea:")
 
 
 def _start_cancion(chat_id: str, sh) -> None:
     sh.set_conv_state(chat_id, {"flow": "cancion", "step": "url", "data": {}})
-    _send(chat_id, "*Nueva cancion*\n\n¿Cual es el link de Spotify?")
+    _send(chat_id, "<b>Nueva cancion</b>\n\n¿Cual es el link de Spotify?")
 
 
 def _continue_nueva(chat_id: str, text: str, state: dict, sh) -> None:
@@ -224,7 +229,7 @@ def _continue_cancion(chat_id: str, text: str, state: dict, sh) -> None:
         data["artista"] = text.strip()
         state.update({"step": "dedicatoria", "data": data})
         sh.set_conv_state(chat_id, state)
-        _send(chat_id, "¿Quieres escribir una dedicatoria?\n_(Por qué le dedicas esta canción... o escribe *no*)_")
+        _send(chat_id, "¿Quieres escribir una dedicatoria?\n<i>(Por qué le dedicas esta canción... o escribe <b>no</b>)</i>")
 
     elif step == "dedicatoria":
         data["dedicatoria"] = "" if text.lower().strip() == "no" else text.strip()
@@ -236,7 +241,7 @@ def _continue_cancion(chat_id: str, text: str, state: dict, sh) -> None:
             dedicatoria=data.get("dedicatoria", ""),
         )
         sh.clear_conv_state(chat_id)
-        _send(chat_id, f"*{data['titulo']} - {data['artista']}* guardada en Canciones")
+        _send(chat_id, f"<b>{_esc(data['titulo'])} - {_esc(data['artista'])}</b> guardada en Canciones")
 
 
 # ------------------------------------------------------------------ #
@@ -264,11 +269,11 @@ def _process_update(update: dict) -> None:
         sh = _sheets()
     except KeyError as e:
         print(f"[webhook] SheetsClient init error (KeyError): {e}", flush=True)
-        _send(chat_id, f"Error: falta variable {e} en Vercel", markdown=False)
+        _send(chat_id, f"Error: falta variable {_esc(e)} en Vercel", parse_mode=None)
         return
     except Exception as e:
         print(f"[webhook] SheetsClient init error ({type(e).__name__}): {e}", flush=True)
-        _send(chat_id, f"Sheet error ({type(e).__name__}): {str(e)[:120]}", markdown=False)
+        _send(chat_id, f"Sheet error ({_esc(type(e).__name__)}): {_esc(str(e)[:120])}", parse_mode=None)
         return
 
     # Mensajes sin / → continuar flujo conversacional si hay uno activo
@@ -286,7 +291,7 @@ def _process_update(update: dict) -> None:
                     _continue_cancion(chat_id, text, state, sh)
             except Exception as e:
                 print(f"[webhook] flow error ({type(e).__name__}): {e}", flush=True)
-                _send(chat_id, f"Error en flujo: {type(e).__name__}: {str(e)[:150]}")
+                _send(chat_id, f"Error en flujo: {_esc(type(e).__name__)}: {_esc(str(e)[:150])}")
         return
 
     # Comandos
@@ -313,7 +318,7 @@ def _process_update(update: dict) -> None:
                 return
             ideas = sh.get_date_ideas(tipo=tipo)
             if not ideas:
-                filtro = f" de tipo *{tipo}*" if tipo else ""
+                filtro = f" de tipo <b>{tipo}</b>" if tipo else ""
                 _send(chat_id, f"No hay ideas pendientes{filtro} ")
                 return
             _send(chat_id, _format_idea(random.choice(ideas)))
@@ -332,14 +337,14 @@ def _process_update(update: dict) -> None:
             if not upcoming:
                 _send(chat_id, "No hay citas planeadas con fecha aún ")
                 return
-            lines = [" *Próximas citas:*\n"]
+            lines = ["\U0001f4c5 <b>Próximas citas:</b>\n"]
             for idea in upcoming[:3]:
                 lines.append(_format_idea(idea, show_fecha=True))
             _send(chat_id, "\n\n".join(lines))
 
         elif command == "/realizada":
             if len(parts) < 2 or not parts[1].isdigit():
-                _send(chat_id, "Uso: /realizada <número> — ej. /realizada 3")
+                _send(chat_id, "Uso: /realizada # \u2014 ej. /realizada 3")
                 return
             numero = int(parts[1])
             if sh.mark_date_done(numero):
@@ -352,7 +357,7 @@ def _process_update(update: dict) -> None:
 
     except Exception as e:
         print(f"[webhook] command error ({type(e).__name__}): {e}", flush=True)
-        _send(chat_id, f"Error en comando {command}: {type(e).__name__}: {str(e)[:120]}", markdown=False)
+        _send(chat_id, f"Error en comando {_esc(command)}: {_esc(type(e).__name__)}: {_esc(str(e)[:120])}", parse_mode=None)
 
 
 # ------------------------------------------------------------------ #
