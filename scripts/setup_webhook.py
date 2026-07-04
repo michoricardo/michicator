@@ -46,6 +46,7 @@ def main() -> None:
     # 2. Register command menu (shows up when users type / in Telegram)
     commands = [
         {"command": "cita",      "description": "Idea de cita aleatoria (o: cita finde / cita cotidiana)"},
+        {"command": "lista",     "description": "Lista de citas pendientes (o: lista finde / cotidiana / historial)"},
         {"command": "proxima",   "description": "Ver las próximas citas planeadas"},
         {"command": "realizada", "description": "Marcar una cita como realizada (ej: /realizada 3)"},
         {"command": "nueva",     "description": "Agregar una nueva idea de cita"},

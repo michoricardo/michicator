@@ -90,8 +90,8 @@ class SheetsClient:
     def mark_song_sent(self, row: int) -> None:
         ws = self._spreadsheet.worksheet("Canciones")
         now = datetime.now(timezone.utc).strftime(_DATE_FMT)
-        ws.update_cell(row, 6, "TRUE")       # col F = enviada
-        ws.update_cell(row, 7, now)           # col G = fecha_envio
+        ws.update_cell(row, 7, "TRUE")       # col G = enviada
+        ws.update_cell(row, 8, now)           # col H = fecha_envio
 
     def upsert_songs(self, tracks: list[dict]) -> int:
         """
@@ -114,6 +114,7 @@ class SheetsClient:
                 t["titulo"],
                 t["artista"],
                 t["url"],
+                "",                           # dedicatoria
                 "FALSE",                      # enviada
                 "",                           # fecha_envio
             ]
@@ -192,6 +193,29 @@ class SheetsClient:
                     continue
 
             ideas.append({**row, "_row": i})
+
+        return ideas
+
+    def get_all_date_ideas(self, tipo: str | None = None) -> list[dict]:
+        """
+        Returns ALL date ideas (including realized) from "Dates con Frida".
+        tipo: None → all | 'cotidiana' | 'finde'
+        Each row includes a '_done' bool key.
+        """
+        ws = self._spreadsheet.worksheet("Dates con Frida")
+        records = ws.get_all_records()
+
+        ideas = []
+        for i, row in enumerate(records, start=2):
+            if tipo:
+                row_tipo = str(row.get("tipo", "")).strip().lower()
+                if tipo == "cotidiana" and row_tipo not in ("cotidiana", "cotidiana/finde"):
+                    continue
+                if tipo == "finde" and row_tipo not in ("finde", "cotidiana/finde"):
+                    continue
+
+            done = str(row.get("realizada", "")).strip().upper() in ("TRUE", "SI", "YES", "1")
+            ideas.append({**row, "_row": i, "_done": done})
 
         return ideas
 

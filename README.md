@@ -70,7 +70,9 @@ Esto es lo que hace posible los comandos de citas: en cuanto escribes `/cita` en
 
 GitHub es la plataforma donde los programadores guardan su código. Tiene una función que permite ejecutar scripts en horarios definidos, completamente gratis, en servidores en la nube — sin necesitar una computadora prendida ni pagar un servidor.
 
-Michicator vive ahí. Cada miércoles (o con el horario que Ricardo configure), GitHub despierta el bot, este lee la libreta, arma el mensaje y te lo manda. Todo sin que Ricardo tenga que hacer nada ese día específico.
+Michicator vive ahí. **Los miércoles y los sábados**, GitHub despierta el bot, este lee la libreta, arma el mensaje y te lo manda. Todo sin que Ricardo tenga que hacer nada ese día específico.
+
+El bot alterna automáticamente: un día manda una canción, el siguiente manda una frase — así siempre hay algo diferente y nunca se repite el mismo tipo dos veces seguidas.
 
 ### 💬 El mensajero — Telegram Bot API
 
@@ -232,6 +234,10 @@ Esta es la parte nueva. Puedes escribirle directamente al bot en Telegram y te r
 | `/cita` | Te sugiere una idea de cita al azar (de las que quedan pendientes) |
 | `/cita finde` | Solo ideas para fin de semana |
 | `/cita cotidiana` | Solo ideas para un miércoles o día entre semana |
+| `/lista` | Lista completa de todas las citas pendientes |
+| `/lista finde` | Solo las pendientes de fin de semana |
+| `/lista cotidiana` | Solo las pendientes cotidianas |
+| `/lista historial` | Todas las citas — pendientes y ya realizadas ✅ |
 | `/proxima` | Te muestra las próximas citas que ya tienen fecha planeada |
 | `/realizada 3` | Marca la cita #3 como hecha |
 | `/nueva` | Agrega una idea de cita nueva (flujo conversacional paso a paso) |

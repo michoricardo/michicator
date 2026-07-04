@@ -6,6 +6,10 @@ Commands handled:
   /cita             → random date idea (any type)
   /cita finde       → weekend idea only
   /cita cotidiana   → weekday idea only
+  /lista            → full list of pending date ideas
+  /lista finde      → pending weekend ideas only
+  /lista cotidiana  → pending weekday ideas only
+  /lista historial  → all date ideas including realized ones
   /proxima          → next planned dates (with fecha set)
   /realizada <#>    → mark date #N as done
   /nueva            → conversational flow to add a date idea
@@ -49,6 +53,10 @@ _HELP_TEXT = (
     "/cita — idea de cita aleatoria\n"
     "/cita finde — solo fines de semana\n"
     "/cita cotidiana — solo entre semana\n"
+    "/lista — todas las citas pendientes\n"
+    "/lista finde — pendientes de finde\n"
+    "/lista cotidiana — pendientes cotidianas\n"
+    "/lista historial — todas, incluyendo ya realizadas\n"
     "/proxima — próximas citas planeadas\n"
     "/realizada <#> — marcar cita como hecha \n"
     "/nueva — agregar una idea de cita\n"
@@ -88,6 +96,65 @@ def _format_idea(idea: dict, show_fecha: bool = False) -> str:
 def _extract_spotify_id(url: str) -> str:
     match = re.search(r"spotify\.com/track/([A-Za-z0-9]+)", url)
     return match.group(1) if match else ""
+
+
+def _cmd_lista(chat_id: str, tipo: str | None, sh, historial: bool = False) -> None:
+    if historial:
+        ideas = sh.get_all_date_ideas(tipo=tipo)
+    else:
+        ideas = sh.get_date_ideas(tipo=tipo)
+    if not ideas:
+        filtro = f" de tipo *{tipo}*" if tipo else ""
+        _send(chat_id, f"No hay citas{filtro} \U0001f937")
+        return
+
+    if historial:
+        pendientes = [i for i in ideas if not i.get("_done")]
+        realizadas = [i for i in ideas if i.get("_done")]
+        tipo_label = {"finde": "finde", "cotidiana": "cotidiana"}.get(tipo or "", "todas")
+        header = f"\U0001f4d6 *Historial de citas \u2014 {tipo_label} ({len(pendientes)} pendientes, {len(realizadas)} realizadas):*"
+    else:
+        tipo_label = {"finde": "finde", "cotidiana": "cotidiana"}.get(tipo or "", "todas")
+        header = f"\U0001f4cb *Citas pendientes \u2014 {tipo_label} ({len(ideas)}):*"
+
+    tipo_map = {
+        "cotidiana": "[cotidiana]",
+        "finde": "[finde]",
+        "cotidiana/finde": "[ambas]",
+    }
+
+    lines = []
+    for idea in ideas:
+        numero = idea.get("#", "?")
+        detalle = str(idea.get("detalle", "")).strip()
+        t = str(idea.get("tipo", "")).strip().lower()
+        fecha = str(idea.get("fecha", "")).strip()
+        referencia = str(idea.get("referencia", "")).strip()
+        done = idea.get("_done", False)
+        fecha_realizada = str(idea.get("fecha_realizada", "")).strip()
+
+        t_label = tipo_map.get(t, "")
+        done_mark = " \u2705" if done else ""
+        line = f"*#{numero}* {detalle} _{t_label}_{done_mark}"
+        if fecha:
+            line += f"\n   \U0001f4c5 {fecha}"
+        if done and fecha_realizada:
+            line += f"\n   \u2705 realizada: {fecha_realizada}"
+        if referencia:
+            line += f"\n   \U0001f517 {referencia}"
+        lines.append(line)
+
+    # Respetar el límite de 4096 caracteres de Telegram
+    chunk = header
+    for line in lines:
+        candidate = chunk + "\n\n" + line
+        if len(candidate) > 3800:
+            _send(chat_id, chunk.rstrip())
+            chunk = line
+        else:
+            chunk = candidate
+    if chunk:
+        _send(chat_id, chunk.rstrip())
 
 
 # ------------------------------------------------------------------ #
@@ -251,6 +318,15 @@ def _process_update(update: dict) -> None:
                 _send(chat_id, f"No hay ideas pendientes{filtro} ")
                 return
             _send(chat_id, _format_idea(random.choice(ideas)))
+
+        elif command == "/lista":
+            sub = parts[1] if len(parts) > 1 else None
+            if sub == "historial":
+                _cmd_lista(chat_id, None, sh, historial=True)
+            elif sub and sub not in ("finde", "cotidiana"):
+                _send(chat_id, "Uso: /lista, /lista finde, /lista cotidiana, /lista historial")
+            else:
+                _cmd_lista(chat_id, sub, sh)
 
         elif command == "/proxima":
             upcoming = sh.get_upcoming_dates()
