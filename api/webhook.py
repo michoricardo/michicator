@@ -45,7 +45,10 @@ def _send(chat_id: str, text: str, markdown: bool = True) -> None:
     payload = {"chat_id": chat_id, "text": text}
     if markdown:
         payload["parse_mode"] = "Markdown"
-    requests.post(url, json=payload, timeout=8)
+    resp = requests.post(url, json=payload, timeout=8)
+    if not resp.ok:
+        print(f"[_send] Telegram error {resp.status_code}: {resp.text[:200]}", flush=True)
+        raise RuntimeError(f"Telegram API error {resp.status_code}: {resp.text[:120]}")
 
 
 _HELP_TEXT = (
@@ -117,12 +120,6 @@ def _cmd_lista(chat_id: str, tipo: str | None, sh, historial: bool = False) -> N
         tipo_label = {"finde": "finde", "cotidiana": "cotidiana"}.get(tipo or "", "todas")
         header = f"\U0001f4cb *Citas pendientes \u2014 {tipo_label} ({len(ideas)}):*"
 
-    tipo_map = {
-        "cotidiana": "[cotidiana]",
-        "finde": "[finde]",
-        "cotidiana/finde": "[ambas]",
-    }
-
     lines = []
     for idea in ideas:
         numero = idea.get("#", "?")
@@ -133,9 +130,11 @@ def _cmd_lista(chat_id: str, tipo: str | None, sh, historial: bool = False) -> N
         done = idea.get("_done", False)
         fecha_realizada = str(idea.get("fecha_realizada", "")).strip()
 
-        t_label = tipo_map.get(t, "")
+        # Usar cursiva sin corchetes — Telegram MarkdownV1 interpreta [texto]
+        # dentro de _..._ como link malformado y rechaza el mensaje silenciosamente
+        t_italic = {"cotidiana": "cotidiana", "finde": "finde", "cotidiana/finde": "ambas"}.get(t, t)
         done_mark = " \u2705" if done else ""
-        line = f"*#{numero}* {detalle} _{t_label}_{done_mark}"
+        line = f"*#{numero}* {detalle} _{t_italic}_{done_mark}"
         if fecha:
             line += f"\n   \U0001f4c5 {fecha}"
         if done and fecha_realizada:
