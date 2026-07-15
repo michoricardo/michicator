@@ -22,6 +22,15 @@ def send_message(chat_id: str, text: str) -> None:
     }
 
     response = requests.post(url, json=payload, timeout=15)
+
+    # Markdown parsing can fail with 400 if the text contains unescaped special
+    # characters. Retry as plain text so the message is never lost.
+    if response.status_code == 400:
+        print(f"⚠ Telegram rechazó el mensaje con parse_mode=Markdown (400): {response.text}")
+        print("  Reintentando sin parse_mode...")
+        payload.pop("parse_mode", None)
+        response = requests.post(url, json=payload, timeout=15)
+
     response.raise_for_status()
 
     data = response.json()

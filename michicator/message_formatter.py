@@ -1,6 +1,13 @@
 """Message formatter — builds the Telegram message."""
 
 
+def _escape_md(text: str) -> str:
+    """Escape Telegram MarkdownV1 special characters in user-provided content."""
+    for char in ("_", "*", "`", "["):
+        text = text.replace(char, f"\\{char}")
+    return text
+
+
 def format_message(
     song: dict | None = None,
     phrase: dict | None = None,
@@ -15,15 +22,15 @@ def format_message(
         parts.append(f"{header}{days_str}")
 
     if phrase:
-        frase = phrase.get("frase", "").strip()
+        frase = _escape_md(phrase.get("frase", "").strip())
         if frase:
             parts.append(f'\n"{frase}"')
 
     if song:
-        titulo = song.get("titulo", "").strip()
-        artista = song.get("artista", "").strip()
+        titulo = _escape_md(song.get("titulo", "").strip())
+        artista = _escape_md(song.get("artista", "").strip())
         url = song.get("url", "").strip()
-        dedicatoria = song.get("dedicatoria", "").strip()
+        dedicatoria = _escape_md(song.get("dedicatoria", "").strip())
 
         song_line = f"🎵 {titulo} — {artista}"
         if url:
@@ -34,7 +41,7 @@ def format_message(
         parts.append(f"\n{song_line}")
 
     if question:
-        pregunta = question.get("pregunta", "").strip()
+        pregunta = _escape_md(question.get("pregunta", "").strip())
         if pregunta:
             parts.append(f"\n🌻 Pregunta de hoy:\n{pregunta}")
 
