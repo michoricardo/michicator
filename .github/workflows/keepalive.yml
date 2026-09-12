@@ -12,6 +12,10 @@ jobs:
   keepalive:
     name: Empty commit to keep workflows active
     runs-on: ubuntu-latest
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+      GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -30,3 +34,60 @@ jobs:
       - name: Push commit
         run: |
           git push origin HEAD:main
+
+      - name: Notify keepalive to both chats
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+
+          import gspread
+          import requests
+          from google.oauth2.service_account import Credentials
+
+          token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+          sheet_id = os.environ.get("GOOGLE_SHEET_ID", "").strip()
+          raw_creds = os.environ.get("GOOGLE_CREDENTIALS_JSON", "").strip()
+
+          if not token or not sheet_id or not raw_creds:
+            print("Missing Telegram or Google credentials; skipping keepalive notification.")
+            raise SystemExit(0)
+
+          creds = Credentials.from_service_account_info(
+              json.loads(raw_creds),
+              scopes=["https://www.googleapis.com/auth/spreadsheets"],
+          )
+          client = gspread.authorize(creds)
+          ws = client.open_by_key(sheet_id).worksheet("Config")
+          rows = ws.get_all_values()
+          config = {
+              row[0].strip(): row[1].strip()
+              for row in rows
+              if len(row) >= 2 and row[0].strip()
+          }
+
+          ids = []
+          for key in ("recipient_telegram_id", "test_telegram_id"):
+            raw = config.get(key, "")
+            ids.extend([x.strip() for x in raw.split(",") if x.strip()])
+
+          ids = sorted(set(ids))
+          if not ids:
+            print("No recipient IDs found in Config; skipping keepalive notification.")
+            raise SystemExit(0)
+
+          ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+          text = (
+              "🫀 keepalive ejecutado\n"
+              "Se creó commit vacío para mantener activos los workflows.\n"
+              f"Timestamp: {ts}"
+          )
+
+          url = f"https://api.telegram.org/bot{token}/sendMessage"
+          for chat_id in ids:
+            payload = {"chat_id": chat_id, "text": text}
+            resp = requests.post(url, json=payload, timeout=15)
+            if not resp.ok:
+              print(f"Failed to notify {chat_id}: {resp.status_code} {resp.text[:200]}")
+          PY
