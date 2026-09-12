@@ -1,0 +1,32 @@
+name: keepalive
+
+on:
+  schedule:
+    - cron: '0 12 1 * *' # first day of every month at 12:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  keepalive:
+    name: Empty commit to keep workflows active
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure bot identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create empty keepalive commit
+        run: |
+          git commit --allow-empty -m "chore: keep workflows alive" || true
+
+      - name: Push commit
+        run: |
+          git push origin HEAD:main

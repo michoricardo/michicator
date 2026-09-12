@@ -6,14 +6,20 @@ Commands handled:
   /cita             → random date idea (any type)
   /cita finde       → weekend idea only
   /cita cotidiana   → weekday idea only
+    /citaidea <texto> → quick add a date idea
   /lista            → full list of pending date ideas
   /lista finde      → pending weekend ideas only
   /lista cotidiana  → pending weekday ideas only
   /lista historial  → all date ideas including realized ones
   /proxima          → next planned dates (with fecha set)
   /realizada <#>    → mark date #N as done
+    /confio           → save why you trust Frida
+    /confio <texto>   → quick save trust note
+    /confianza        → show recent trust notes
+    /recuerdos        → show recent photo memories
   /nueva            → conversational flow to add a date idea
   /cancion          → conversational flow to add a song
+    [photo + caption] → save a photo memory in the sheet
   /help             → command list
 """
 
@@ -61,12 +67,17 @@ _HELP_TEXT = (
     "/cita — idea de cita aleatoria\n"
     "/cita finde — solo fines de semana\n"
     "/cita cotidiana — solo entre semana\n"
+    "/citaidea texto — guardar cita rapido\n"
     "/lista — todas las citas pendientes\n"
     "/lista finde — pendientes de finde\n"
     "/lista cotidiana — pendientes cotidianas\n"
     "/lista historial — todas, incluyendo ya realizadas\n"
     "/proxima — próximas citas planeadas\n"
     "/realizada # — marcar cita como hecha \n"
+    "/confio — guardar por que confias en Frida\n"
+    "/confio texto — guardar nota de confianza rapido\n"
+    "/confianza — ver notas de confianza recientes\n"
+    "/recuerdos — ver recuerdos con foto recientes\n"
     "/nueva — agregar una idea de cita\n"
     "/cancion — agregar una canción\n"
     "/help — esta ayuda"
@@ -161,6 +172,44 @@ def _cmd_lista(chat_id: str, tipo: str | None, sh, historial: bool = False) -> N
         _send(chat_id, chunk.rstrip())
 
 
+def _cmd_confianza(chat_id: str, sh) -> None:
+    notes = sh.get_trust_notes(limit=8)
+    if not notes:
+        _send(chat_id, "Aun no hay notas de confianza. Usa /confio para guardar una ")
+        return
+
+    lines = ["🧡 <b>Por qué confias en Frida:</b>"]
+    for n in notes:
+        numero = n.get("#", "?")
+        motivo = _esc(str(n.get("motivo", "")).strip())
+        fecha = _esc(str(n.get("fecha_registro", "")).strip())
+        line = f"<b>#{numero}</b> {motivo}"
+        if fecha:
+            line += f"\n   🗓 {fecha}"
+        lines.append(line)
+
+    _send(chat_id, "\n\n".join(lines))
+
+
+def _cmd_recuerdos(chat_id: str, sh) -> None:
+    memories = sh.get_recent_memories(limit=8)
+    if not memories:
+        _send(chat_id, "Aun no hay recuerdos guardados. Manda una foto con caption y yo la registro ")
+        return
+
+    lines = ["📸 <b>Recuerdos recientes:</b>"]
+    for m in memories:
+        numero = m.get("#", "?")
+        caption = _esc(str(m.get("caption", "")).strip()) or "(sin descripcion)"
+        fecha = _esc(str(m.get("fecha_registro", "")).strip())
+        line = f"<b>#{numero}</b> {caption}"
+        if fecha:
+            line += f"\n   🗓 {fecha}"
+        lines.append(line)
+
+    _send(chat_id, "\n\n".join(lines))
+
+
 # ------------------------------------------------------------------ #
 #  Conversational flows                                                #
 # ------------------------------------------------------------------ #
@@ -173,6 +222,11 @@ def _start_nueva(chat_id: str, sh) -> None:
 def _start_cancion(chat_id: str, sh) -> None:
     sh.set_conv_state(chat_id, {"flow": "cancion", "step": "url", "data": {}})
     _send(chat_id, "<b>Nueva cancion</b>\n\n¿Cual es el link de Spotify?")
+
+
+def _start_confio(chat_id: str, sh) -> None:
+    sh.set_conv_state(chat_id, {"flow": "confio", "step": "motivo", "data": {}})
+    _send(chat_id, "<b>Confio en Frida</b>\n\nEscribe por que confias en ella hoy:")
 
 
 def _continue_nueva(chat_id: str, text: str, state: dict, sh) -> None:
@@ -244,6 +298,16 @@ def _continue_cancion(chat_id: str, text: str, state: dict, sh) -> None:
         _send(chat_id, f"<b>{_esc(data['titulo'])} - {_esc(data['artista'])}</b> guardada en Canciones")
 
 
+def _continue_confio(chat_id: str, text: str, sh) -> None:
+    motivo = text.strip()
+    if not motivo:
+        _send(chat_id, "Escribe una razon breve de confianza ")
+        return
+    numero = sh.add_trust_note(motivo)
+    sh.clear_conv_state(chat_id)
+    _send(chat_id, f"🧡 Nota de confianza guardada como <b>#{numero}</b>")
+
+
 # ------------------------------------------------------------------ #
 #  Main update processor                                               #
 # ------------------------------------------------------------------ #
@@ -255,9 +319,9 @@ def _process_update(update: dict) -> None:
 
     chat_id = str(message["chat"]["id"])
     text = str(message.get("text", "")).strip()
-
-    if not text:
-        return
+    caption = str(message.get("caption", "")).strip()
+    photos = message.get("photo") or []
+    message_id = int(message.get("message_id", 0))
 
     # /help no necesita Google Sheets
     if text.lower().startswith("/help"):
@@ -276,6 +340,25 @@ def _process_update(update: dict) -> None:
         _send(chat_id, f"Sheet error ({_esc(type(e).__name__)}): {_esc(str(e)[:120])}", parse_mode=None)
         return
 
+    # Si llega foto, guardarla como recuerdo aunque no tenga comando.
+    if photos:
+        best = photos[-1]
+        file_id = str(best.get("file_id", "")).strip()
+        file_unique_id = str(best.get("file_unique_id", "")).strip()
+        if file_id:
+            idx = sh.add_memory_photo(
+                chat_id=chat_id,
+                message_id=message_id,
+                file_id=file_id,
+                file_unique_id=file_unique_id,
+                caption=caption,
+            )
+            _send(chat_id, f"📸 Recuerdo guardado como <b>#{idx}</b>. Usa /recuerdos para verlos.")
+        return
+
+    if not text:
+        return
+
     # Mensajes sin / → continuar flujo conversacional si hay uno activo
     if not text.startswith("/"):
         try:
@@ -289,16 +372,19 @@ def _process_update(update: dict) -> None:
                     _continue_nueva(chat_id, text, state, sh)
                 elif flow == "cancion":
                     _continue_cancion(chat_id, text, state, sh)
+                elif flow == "confio":
+                    _continue_confio(chat_id, text, sh)
             except Exception as e:
                 print(f"[webhook] flow error ({type(e).__name__}): {e}", flush=True)
                 _send(chat_id, f"Error en flujo: {_esc(type(e).__name__)}: {_esc(str(e)[:150])}")
         return
 
     # Comandos
+    raw_parts = text.split()
     parts = text.lower().split()
     command = parts[0].split("@")[0]
 
-    if command not in ("/nueva", "/cancion"):
+    if command not in ("/nueva", "/cancion", "/confio"):
         try:
             sh.clear_conv_state(chat_id)
         except Exception:
@@ -311,6 +397,23 @@ def _process_update(update: dict) -> None:
         elif command == "/cancion":
             _start_cancion(chat_id, sh)
 
+        elif command == "/confio":
+            if len(raw_parts) > 1:
+                motivo = text[len(raw_parts[0]):].strip()
+                if not motivo:
+                    _send(chat_id, "Uso: /confio o /confio <texto>")
+                    return
+                idx = sh.add_trust_note(motivo)
+                _send(chat_id, f"🧡 Nota de confianza guardada como <b>#{idx}</b>")
+            else:
+                _start_confio(chat_id, sh)
+
+        elif command == "/confianza":
+            _cmd_confianza(chat_id, sh)
+
+        elif command == "/recuerdos":
+            _cmd_recuerdos(chat_id, sh)
+
         elif command == "/cita":
             tipo = parts[1] if len(parts) > 1 else None
             if tipo and tipo not in ("finde", "cotidiana"):
@@ -322,6 +425,14 @@ def _process_update(update: dict) -> None:
                 _send(chat_id, f"No hay ideas pendientes{filtro} ")
                 return
             _send(chat_id, _format_idea(random.choice(ideas)))
+
+        elif command == "/citaidea":
+            detalle = text[len(raw_parts[0]):].strip() if raw_parts else ""
+            if not detalle:
+                _send(chat_id, "Uso: /citaidea <idea de cita>")
+                return
+            sh.add_date_idea(detalle=detalle, tipo="cotidiana/finde", referencia="")
+            _send(chat_id, "🗓 Cita guardada rapido en Dates con Frida como tipo ambas")
 
         elif command == "/lista":
             sub = parts[1] if len(parts) > 1 else None

@@ -22,6 +22,13 @@ except ImportError:
         CellNotFound = gspread.exceptions.CellNotFound  # type: ignore
     except AttributeError:
         CellNotFound = Exception  # fallback: catch all
+try:
+    from gspread.exceptions import WorksheetNotFound
+except ImportError:
+    try:
+        WorksheetNotFound = gspread.exceptions.WorksheetNotFound  # type: ignore
+    except AttributeError:
+        WorksheetNotFound = Exception
 from google.oauth2.service_account import Credentials
 
 
@@ -44,6 +51,15 @@ class SheetsClient:
         client = _get_client()
         sheet_id = os.environ["GOOGLE_SHEET_ID"]
         self._spreadsheet = client.open_by_key(sheet_id)
+
+    def _get_or_create_ws(self, title: str, headers: list[str]):
+        """Returns worksheet by title, creating it with headers when missing."""
+        try:
+            return self._spreadsheet.worksheet(title)
+        except WorksheetNotFound:
+            ws = self._spreadsheet.add_worksheet(title=title, rows=1000, cols=max(len(headers), 8))
+            ws.append_row(headers, value_input_option="USER_ENTERED")
+            return ws
 
     # ------------------------------------------------------------------ #
     #  Config                                                              #
@@ -267,6 +283,66 @@ class SheetsClient:
             [numero, spotify_id, titulo, artista, url, dedicatoria, "FALSE", ""],
             value_input_option="USER_ENTERED",
         )
+
+    # ------------------------------------------------------------------ #
+    #  Confianza en Frida                                                  #
+    # ------------------------------------------------------------------ #
+
+    def add_trust_note(self, motivo: str) -> int:
+        """Appends a trust note in 'Confio en Frida'. Returns assigned #."""
+        ws = self._get_or_create_ws(
+            "Confio en Frida",
+            ["#", "motivo", "fecha_registro"],
+        )
+        numero = len(ws.get_all_records()) + 1
+        now = datetime.now(timezone.utc).strftime(_DATE_FMT)
+        ws.append_row([numero, motivo, now], value_input_option="USER_ENTERED")
+        return numero
+
+    def get_trust_notes(self, limit: int = 20) -> list[dict]:
+        """Returns trust notes from 'Confio en Frida', newest first."""
+        ws = self._get_or_create_ws(
+            "Confio en Frida",
+            ["#", "motivo", "fecha_registro"],
+        )
+        records = ws.get_all_records()
+        records.reverse()
+        return records[:limit]
+
+    # ------------------------------------------------------------------ #
+    #  Recuerdos con foto                                                  #
+    # ------------------------------------------------------------------ #
+
+    def add_memory_photo(
+        self,
+        chat_id: str,
+        message_id: int,
+        file_id: str,
+        file_unique_id: str,
+        caption: str,
+    ) -> int:
+        """Stores an incoming Telegram photo in 'Recuerdos'. Returns assigned #."""
+        ws = self._get_or_create_ws(
+            "Recuerdos",
+            ["#", "fecha_registro", "chat_id", "message_id", "file_id", "file_unique_id", "caption"],
+        )
+        numero = len(ws.get_all_records()) + 1
+        now = datetime.now(timezone.utc).strftime(_DATE_FMT)
+        ws.append_row(
+            [numero, now, chat_id, message_id, file_id, file_unique_id, caption],
+            value_input_option="USER_ENTERED",
+        )
+        return numero
+
+    def get_recent_memories(self, limit: int = 10) -> list[dict]:
+        """Returns recent photo memories from 'Recuerdos', newest first."""
+        ws = self._get_or_create_ws(
+            "Recuerdos",
+            ["#", "fecha_registro", "chat_id", "message_id", "file_id", "file_unique_id", "caption"],
+        )
+        records = ws.get_all_records()
+        records.reverse()
+        return records[:limit]
 
     # ------------------------------------------------------------------ #
     #  Conversation state (flujos interactivos del bot)                   #
