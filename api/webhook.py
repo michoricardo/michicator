@@ -17,6 +17,9 @@ Commands handled:
     /confio <texto>   → quick save trust note
     /confianza        → show recent trust notes
     /recuerdos        → show recent photo memories
+    /recuerdo         → send one random memory photo
+    /recuerdo reciente → send latest memory photo
+    /recuerdofoto <#> → send memory photo by number
   /nueva            → conversational flow to add a date idea
   /cancion          → conversational flow to add a song
     [photo + caption] → save a photo memory in the sheet
@@ -62,6 +65,20 @@ def _send(chat_id: str, text: str, parse_mode: str = "HTML") -> None:
         raise RuntimeError(f"Telegram API error {resp.status_code}: {resp.text[:120]}")
 
 
+def _send_photo(chat_id: str, file_id: str, caption: str = "") -> None:
+    import requests
+    token = os.environ["TELEGRAM_BOT_TOKEN"]
+    url = f"https://api.telegram.org/bot{token}/sendPhoto"
+    payload = {"chat_id": chat_id, "photo": file_id}
+    if caption:
+        payload["caption"] = caption
+        payload["parse_mode"] = "HTML"
+    resp = requests.post(url, json=payload, timeout=8)
+    if not resp.ok:
+        print(f"[_send_photo] Telegram error {resp.status_code}: {resp.text[:200]}", flush=True)
+        raise RuntimeError(f"Telegram API error {resp.status_code}: {resp.text[:120]}")
+
+
 _HELP_TEXT = (
     "<b>Comandos disponibles:</b>\n\n"
     "/cita — idea de cita aleatoria\n"
@@ -78,6 +95,9 @@ _HELP_TEXT = (
     "/confio texto — guardar nota de confianza rapido\n"
     "/confianza — ver notas de confianza recientes\n"
     "/recuerdos — ver recuerdos con foto recientes\n"
+    "/recuerdo — mandar un recuerdo aleatorio\n"
+    "/recuerdo reciente — mandar el mas reciente\n"
+    "/recuerdofoto # — mandar foto de un recuerdo\n"
     "/nueva — agregar una idea de cita\n"
     "/cancion — agregar una canción\n"
     "/help — esta ayuda"
@@ -207,7 +227,55 @@ def _cmd_recuerdos(chat_id: str, sh) -> None:
             line += f"\n   🗓 {fecha}"
         lines.append(line)
 
+    lines.append("\nTip: usa /recuerdo para uno aleatorio o /recuerdo reciente")
     _send(chat_id, "\n\n".join(lines))
+
+
+def _memory_caption(memory: dict) -> str:
+    numero = _esc(str(memory.get("#", "?")).strip())
+    caption = _esc(str(memory.get("caption", "")).strip()) or "(sin descripcion)"
+    fecha = _esc(str(memory.get("fecha_registro", "")).strip())
+    cap = f"📸 <b>Recuerdo #{numero}</b>\n{caption}"
+    if fecha:
+        cap += f"\n🗓 {fecha}"
+    return cap
+
+
+def _cmd_recuerdo_random(chat_id: str, sh) -> None:
+    memories = sh.get_all_memories()
+    if not memories:
+        _send(chat_id, "Aun no hay recuerdos guardados. Manda una foto con caption y yo la registro ")
+        return
+    memory = random.choice(memories)
+    file_id = str(memory.get("file_id", "")).strip()
+    if not file_id:
+        _send(chat_id, "Ese recuerdo no tiene foto utilizable, intenta otro.")
+        return
+    _send_photo(chat_id, file_id=file_id, caption=_memory_caption(memory))
+
+
+def _cmd_recuerdo_latest(chat_id: str, sh) -> None:
+    memory = sh.get_latest_memory()
+    if not memory:
+        _send(chat_id, "Aun no hay recuerdos guardados. Manda una foto con caption y yo la registro ")
+        return
+    file_id = str(memory.get("file_id", "")).strip()
+    if not file_id:
+        _send(chat_id, "El recuerdo mas reciente no tiene foto utilizable.")
+        return
+    _send_photo(chat_id, file_id=file_id, caption=_memory_caption(memory))
+
+
+def _cmd_recuerdo_by_number(chat_id: str, sh, numero: int) -> None:
+    memory = sh.get_memory_by_number(numero)
+    if not memory:
+        _send(chat_id, f"No encontre el recuerdo #{numero}")
+        return
+    file_id = str(memory.get("file_id", "")).strip()
+    if not file_id:
+        _send(chat_id, f"El recuerdo #{numero} no tiene foto utilizable")
+        return
+    _send_photo(chat_id, file_id=file_id, caption=_memory_caption(memory))
 
 
 # ------------------------------------------------------------------ #
@@ -413,6 +481,21 @@ def _process_update(update: dict) -> None:
 
         elif command == "/recuerdos":
             _cmd_recuerdos(chat_id, sh)
+
+        elif command == "/recuerdo":
+            sub = parts[1] if len(parts) > 1 else ""
+            if sub in ("", "azar", "aleatorio"):
+                _cmd_recuerdo_random(chat_id, sh)
+            elif sub in ("reciente", "ultimo", "último"):
+                _cmd_recuerdo_latest(chat_id, sh)
+            else:
+                _send(chat_id, "Uso: /recuerdo o /recuerdo reciente")
+
+        elif command == "/recuerdofoto":
+            if len(parts) < 2 or not parts[1].isdigit():
+                _send(chat_id, "Uso: /recuerdofoto # — ej. /recuerdofoto 3")
+                return
+            _cmd_recuerdo_by_number(chat_id, sh, int(parts[1]))
 
         elif command == "/cita":
             tipo = parts[1] if len(parts) > 1 else None

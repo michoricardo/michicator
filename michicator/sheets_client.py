@@ -344,6 +344,26 @@ class SheetsClient:
         records.reverse()
         return records[:limit]
 
+    def get_all_memories(self) -> list[dict]:
+        """Returns all photo memories from 'Recuerdos'."""
+        ws = self._get_or_create_ws(
+            "Recuerdos",
+            ["#", "fecha_registro", "chat_id", "message_id", "file_id", "file_unique_id", "caption"],
+        )
+        return ws.get_all_records()
+
+    def get_memory_by_number(self, numero: int) -> dict | None:
+        """Returns one memory by # value, or None if missing."""
+        for memory in self.get_all_memories():
+            if str(memory.get("#", "")).strip() == str(numero):
+                return memory
+        return None
+
+    def get_latest_memory(self) -> dict | None:
+        """Returns the latest memory (last row), or None if empty."""
+        records = self.get_all_memories()
+        return records[-1] if records else None
+
     # ------------------------------------------------------------------ #
     #  Conversation state (flujos interactivos del bot)                   #
     # ------------------------------------------------------------------ #
