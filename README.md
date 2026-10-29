@@ -241,10 +241,73 @@ Esta es la parte nueva. Puedes escribirle directamente al bot en Telegram y te r
 | `/proxima` | Te muestra las próximas citas que ya tienen fecha planeada |
 | `/realizada 3` | Marca la cita #3 como hecha |
 | `/nueva` | Agrega una idea de cita nueva (flujo conversacional paso a paso) |
+| `/citaidea texto` | Guarda una cita en una sola línea y sigue sin perderla |
+| `/miidea texto` | Frida también puede guardar ideas de cita directamente |
 | `/cancion` | Agrega una canción nueva con link de Spotify y dedicatoria |
 | `/help` | Lista todos los comandos disponibles |
 
 Ricardo va llenando la pestaña `Dates con Frida` del Sheet con ideas mientras las va encontrando — un video en TikTok, un lugar que le recomendaron, algo que vio y pensó *"esto le va a gustar a Frida"*. El bot las guarda hasta que ustedes las hagan realidad.
+
+---
+
+## Modulo de recuerdos y preferencias de Frida 💞
+
+Además del bot de mensajes automáticos, ahora michicator tiene un pequeño archivador sentimental para seguir ayudando a Ricardo a recordar lo que hace feliz a Frida, lo que le gusta y lo que ya tiene en su colección.
+
+### Preferencias y recuerdos de Frida
+
+En la pestaña `Preferencias Frida` se guardan cosas como:
+
+- su personaje favorito
+- su café favorito
+- lugares o comidas que siempre pide
+- detalles que le hacen sentir en casa
+- cosas que no le gustan para no volver a ofrecerlas
+
+Los comandos relevantes son:
+
+| Comando | Qué hace |
+|---|---|
+| `/favorito categoria|item|nota` | Guarda algo que le gusta |
+| `/nogusta categoria|item|nota` | Guarda algo que no le gusta |
+| `/gustos` | Muestra una vista rápida de sus favoritos y dislikes recientes |
+
+Ejemplo real:
+
+- `/favorito comida|hamburguesa famous star|siempre pide de Carl's Jr`
+- `/favorito personaje|Pantera Rosa|le encanta la vibra del personaje`
+- `/nogusta bebida|café con hielo demasiado dulce|no le gusta`
+
+Esto sirve como una especie de libreta emocional que ayuda a no olvidar detalles pequeños pero importantes.
+
+### Colección de fugglers 🐲
+
+La pestaña `Fugglers` sirve para registrar la colección de peluches monstruosos de Frida. Ahí se guarda:
+
+- nombre del fuggler
+- breve descripción
+- foto asociada (si se manda por Telegram)
+- fecha de registro
+
+Comandos útiles:
+
+| Comando | Qué hace |
+|---|---|
+| `/fuggler nombre|descripcion` | Agrega un fuggler a su colección |
+| `/fugglers` | Muestra la colección actual |
+| foto + caption `/fuggler nombre|descripcion` | Adjunta una foto al fuggler correspondiente |
+
+Esto evita que se repitan, y que se olvide cuál ya tiene y cuál todavía falta. La colección puede catalogarse por nombre y se puede consultar sin revisar el teléfono.
+
+### Frida también puede interactuar con el bot 💌
+
+Frida puede participar desde el mismo bot y mandar ideas de cita sin depender de que Ricardo lo haga todo. El comando principal es:
+
+| Comando | Qué hace |
+|---|---|
+| `/miidea texto` | Guarda una idea de cita directamente en `Dates con Frida` |
+
+Esto vuelve al bot más colaborativo y más íntimo: no solo es un canal de envío, sino también un "cuaderno compartido" para ideas de recuerdos, horarios y actividades juntos.
 
 ---
 

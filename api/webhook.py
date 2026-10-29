@@ -34,6 +34,8 @@ import re
 import sys
 from http.server import BaseHTTPRequestHandler
 
+from michicator.frida_memory import FridaMemory
+
 # NOTE: michicator modules are imported lazily (inside functions) so Vercel
 # can resolve the handler class at build time without needing the project root
 # in sys.path during the static analysis phase.
@@ -47,6 +49,12 @@ def _sheets():
     _add_project_root()
     from michicator.sheets_client import SheetsClient
     return SheetsClient()
+
+
+def _frida_memory():
+    _add_project_root()
+    return FridaMemory(_sheets())
+
 
 def _esc(text) -> str:
     """HTML-escape user content for Telegram's HTML parse mode."""
@@ -85,6 +93,7 @@ _HELP_TEXT = (
     "/cita finde — solo fines de semana\n"
     "/cita cotidiana — solo entre semana\n"
     "/citaidea texto — guardar cita rapido\n"
+    "/miidea texto — Frida también puede guardar ideas de cita\n"
     "/lista — todas las citas pendientes\n"
     "/lista finde — pendientes de finde\n"
     "/lista cotidiana — pendientes cotidianas\n"
@@ -98,6 +107,11 @@ _HELP_TEXT = (
     "/recuerdo — mandar un recuerdo aleatorio\n"
     "/recuerdo reciente — mandar el mas reciente\n"
     "/recuerdofoto # — mandar foto de un recuerdo\n"
+    "/favorito categoria|item|nota — guardar algo que le gusta\n"
+    "/nogusta categoria|item|nota — guardar algo que no le gusta\n"
+    "/gustos — ver favoritos y dislikes recientes\n"
+    "/fuggler nombre|descripcion — agregar un fuggler\n"
+    "/fugglers — ver colección actual\n"
     "/nueva — agregar una idea de cita\n"
     "/cancion — agregar una canción\n"
     "/help — esta ayuda"
@@ -228,6 +242,42 @@ def _cmd_recuerdos(chat_id: str, sh) -> None:
         lines.append(line)
 
     lines.append("\nTip: usa /recuerdo para uno aleatorio o /recuerdo reciente")
+    _send(chat_id, "\n\n".join(lines))
+
+
+def _cmd_gustos(chat_id: str, memory: FridaMemory) -> None:
+    prefs = memory.get_preferences(limit=12)
+    if not prefs:
+        _send(chat_id, "Aun no hay gustos ni dislikes guardados. Usa /favorito o /nogusta.")
+        return
+
+    lines = ["💞 <b>Lo que sabe Frida:</b>"]
+    for row in prefs:
+        categoria = _esc(str(row.get("categoria", "")).strip())
+        item = _esc(str(row.get("item", "")).strip())
+        valor = _esc(str(row.get("valor", "")).strip())
+        nota = _esc(str(row.get("nota", "")).strip())
+        line = f"<b>{valor}</b> — {categoria}: {item}"
+        if nota:
+            line += f"\n   {nota}"
+        lines.append(line)
+    _send(chat_id, "\n\n".join(lines))
+
+
+def _cmd_fugglers(chat_id: str, memory: FridaMemory) -> None:
+    fugglers = memory.get_fugglers(limit=10)
+    if not fugglers:
+        _send(chat_id, "Todavia no hay fugglers guardados. Usa /fuggler nombre|descripcion")
+        return
+
+    lines = ["🐲 <b>Fugglers de Frida:</b>"]
+    for row in fugglers:
+        nombre = _esc(str(row.get("nombre", "")).strip())
+        descripcion = _esc(str(row.get("descripcion", "")).strip())
+        line = f"<b>{nombre}</b>"
+        if descripcion:
+            line += f" — {descripcion}"
+        lines.append(line)
     _send(chat_id, "\n\n".join(lines))
 
 
@@ -413,6 +463,29 @@ def _process_update(update: dict) -> None:
         best = photos[-1]
         file_id = str(best.get("file_id", "")).strip()
         file_unique_id = str(best.get("file_unique_id", "")).strip()
+        if caption and caption.lower().startswith("/fuggler"):
+            memory = _frida_memory()
+            payload = caption.replace("/fuggler", "", 1).strip()
+            arr = [p.strip() for p in payload.split("|", 1)]
+            nombre = arr[0] if arr else ""
+            descripcion = arr[1] if len(arr) > 1 else ""
+            if nombre:
+                existing = memory.get_fuggler_by_name(nombre)
+                if existing:
+                    ws = sh._get_or_create_ws(
+                        "Fugglers",
+                        ["#", "nombre", "descripcion", "file_id", "foto_url", "fecha_registro"],
+                    )
+                    row_num = int(existing.get("_row", 0)) if existing.get("_row") else 0
+                    if row_num:
+                        ws.update_cell(row_num, 4, file_id)
+                    if descripcion:
+                        ws.update_cell(row_num, 3, descripcion)
+                    _send(chat_id, f"🐲 Foto adjunta a <b>{_esc(nombre)}</b>.")
+                else:
+                    memory.add_fuggler(nombre, descripcion, file_id=file_id)
+                    _send(chat_id, f"🐲 Fuggler guardado con foto: <b>{_esc(nombre)}</b>")
+                return
         if file_id:
             idx = sh.add_memory_photo(
                 chat_id=chat_id,
@@ -496,6 +569,63 @@ def _process_update(update: dict) -> None:
                 _send(chat_id, "Uso: /recuerdofoto # — ej. /recuerdofoto 3")
                 return
             _cmd_recuerdo_by_number(chat_id, sh, int(parts[1]))
+
+        elif command in ("/favorito", "/gusta"):
+            memory = _frida_memory()
+            payload = text.split("|", 2)
+            if len(payload) < 2:
+                _send(chat_id, "Uso: /favorito categoria|item|nota(opcional)")
+                return
+            category = payload[0].replace("/favorito", "").replace("/gusta", "").strip()
+            item = payload[1].strip()
+            note = payload[2].strip() if len(payload) > 2 else ""
+            idx = memory.add_favorite(category, item, note)
+            _send(chat_id, f"💞 Guardado como favorito #{idx}: <b>{_esc(item)}</b>")
+
+        elif command in ("/nogusta", "/nodisgusta"):
+            memory = _frida_memory()
+            payload = text.split("|", 2)
+            if len(payload) < 2:
+                _send(chat_id, "Uso: /nogusta categoria|item|nota(opcional)")
+                return
+            category = payload[0].replace("/nogusta", "").replace("/nodisgusta", "").strip()
+            item = payload[1].strip()
+            note = payload[2].strip() if len(payload) > 2 else ""
+            idx = memory.add_dislike(category, item, note)
+            _send(chat_id, f"⚠️ Guardado como dislike #{idx}: <b>{_esc(item)}</b>")
+
+        elif command in ("/gustos", "/preferencias"):
+            memory = _frida_memory()
+            _cmd_gustos(chat_id, memory)
+
+        elif command in ("/fuggler", "/fugglers"):
+            memory = _frida_memory()
+            if len(raw_parts) <= 1 and command == "/fuggler":
+                _cmd_fugglers(chat_id, memory)
+                return
+            if command == "/fugglers":
+                _cmd_fugglers(chat_id, memory)
+                return
+            payload = text.split("|", 1)
+            if len(payload) < 2:
+                _send(chat_id, "Uso: /fuggler nombre|descripcion")
+                return
+            nombre = payload[0].replace("/fuggler", "").strip()
+            descripcion = payload[1].strip()
+            if not nombre:
+                _send(chat_id, "Usa /fuggler nombre|descripcion")
+                return
+            memory.add_fuggler(nombre, descripcion)
+            _send(chat_id, f"🐲 Fuggler guardado: <b>{_esc(nombre)}</b>")
+
+        elif command in ("/miidea", "/fridaidea"):
+            detalle = text[len(raw_parts[0]):].strip() if raw_parts else ""
+            if not detalle:
+                _send(chat_id, "Uso: /miidea <idea de cita>")
+                return
+            memory = _frida_memory()
+            memory.add_date_idea(detalle=detalle, tipo="cotidiana/finde", referencia="")
+            _send(chat_id, "💌 Idea de cita guardada para ustedes, listo.")
 
         elif command == "/cita":
             tipo = parts[1] if len(parts) > 1 else None
