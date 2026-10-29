@@ -250,11 +250,15 @@ Ricardo va llenando la pestaña `Dates con Frida` del Sheet con ideas mientras l
 
 ---
 
-## Modulo de recuerdos y preferencias de Frida 💞
+## Módulos nuevos: preferencias, fugglers y recuerdos 💞
 
-Además del bot de mensajes automáticos, ahora michicator tiene un pequeño archivador sentimental para seguir ayudando a Ricardo a recordar lo que hace feliz a Frida, lo que le gusta y lo que ya tiene en su colección.
+Además del bot de mensajes automáticos, michicator ahora tiene 3 módulos prácticos para cuidar los detalles más bonitos de la relación:
 
-### Preferencias y recuerdos de Frida
+1. `Preferencias Frida` para guardar lo que le gusta y lo que no le gusta
+2. `Fugglers` para guardar la colección de peluches y fotos
+3. `Recuerdos` para archivar fotos y momentos importantes
+
+### 1) Preferencias de Frida
 
 En la pestaña `Preferencias Frida` se guardan cosas como:
 
@@ -264,23 +268,29 @@ En la pestaña `Preferencias Frida` se guardan cosas como:
 - detalles que le hacen sentir en casa
 - cosas que no le gustan para no volver a ofrecerlas
 
-Los comandos relevantes son:
+Los comandos principales son:
 
 | Comando | Qué hace |
 |---|---|
-| `/favorito categoria|item|nota` | Guarda algo que le gusta |
-| `/nogusta categoria|item|nota` | Guarda algo que no le gusta |
-| `/gustos` | Muestra una vista rápida de sus favoritos y dislikes recientes |
+| `/gusta texto` | Guarda algo que le gusta |
+| `/nogusta texto` | Guarda algo que no le gusta |
+| `/gustos` | Muestra favoritos y dislikes recientes |
 
-Ejemplo real:
+Ejemplos reales:
 
-- `/favorito comida|hamburguesa famous star|siempre pide de Carl's Jr`
-- `/favorito personaje|Pantera Rosa|le encanta la vibra del personaje`
-- `/nogusta bebida|café con hielo demasiado dulce|no le gusta`
+- `/gusta pide siempre famous star en carls jr`
+- `/gusta comida hamburguesa`
+- `/nogusta catsup`
+- `/nogusta café muy dulce`
 
-Esto sirve como una especie de libreta emocional que ayuda a no olvidar detalles pequeños pero importantes.
+También funciona el formato más estructurado con categoría y item:
 
-### Colección de fugglers 🐲
+- `/gusta comida|hamburguesa famous star`
+- `/nogusta bebida|café con hielo demasiado dulce`
+
+Esto funciona como una libreta emocional para no olvidar detalles pequeños pero importantes.
+
+### 2) Colección de fugglers 🐲
 
 La pestaña `Fugglers` sirve para registrar la colección de peluches monstruosos de Frida. Ahí se guarda:
 
@@ -297,7 +307,29 @@ Comandos útiles:
 | `/fugglers` | Muestra la colección actual |
 | foto + caption `/fuggler nombre|descripcion` | Adjunta una foto al fuggler correspondiente |
 
-Esto evita que se repitan, y que se olvide cuál ya tiene y cuál todavía falta. La colección puede catalogarse por nombre y se puede consultar sin revisar el teléfono.
+Esto evita que se repitan, y que se olvide cuál ya tiene y cuál todavía falta. La colección puede catalogarse por nombre y consultarse sin revisar el teléfono.
+
+### 3) Recuerdos con foto 📸
+
+La pestaña `Recuerdos` sirve como álbum sentimental para guardar fotos y momentos bonitos. Cuando mandas una foto al bot, se guarda automáticamente con:
+
+- fecha
+- chat_id
+- message_id
+- file_id de Telegram
+- caption (si viene)
+
+Comandos útiles:
+
+| Comando | Qué hace |
+|---|---|
+| foto directa al bot | Guarda la foto como recuerdo |
+| `/recuerdos` | Muestra recuerdos recientes |
+| `/recuerdo` | Envía un recuerdo aleatorio |
+| `/recuerdo reciente` | Envía el recuerdo más reciente |
+| `/recuerdofoto 3` | Muestra el recuerdo #3 |
+
+Esto sirve como un mini álbum privado de momentos de la relación, sin depender de buscar fotos sueltas en el teléfono.
 
 ### Frida también puede interactuar con el bot 💌
 

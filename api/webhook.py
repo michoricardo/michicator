@@ -107,8 +107,10 @@ _HELP_TEXT = (
     "/recuerdo — mandar un recuerdo aleatorio\n"
     "/recuerdo reciente — mandar el mas reciente\n"
     "/recuerdofoto # — mandar foto de un recuerdo\n"
-    "/favorito categoria|item|nota — guardar algo que le gusta\n"
-    "/nogusta categoria|item|nota — guardar algo que no le gusta\n"
+    "/gusta <item> — guardar algo que le gusta\n"
+    "/gusta comida hamburguesa — también acepta categoria + item\n"
+    "/nogusta <item> — guardar algo que no le gusta\n"
+    "/nogusta catsup — también acepta texto natural\n"
     "/gustos — ver favoritos y dislikes recientes\n"
     "/fuggler nombre|descripcion — agregar un fuggler\n"
     "/fugglers — ver colección actual\n"
@@ -149,6 +151,50 @@ def _format_idea(idea: dict, show_fecha: bool = False) -> str:
 def _extract_spotify_id(url: str) -> str:
     match = re.search(r"spotify\.com/track/([A-Za-z0-9]+)", url)
     return match.group(1) if match else ""
+
+
+def _parse_preference_payload(command: str, raw_text: str) -> tuple[str, str, str]:
+    """Parse a preference command in either pipe format or simple natural text.
+
+    Supported formats:
+      /favorito comida|hamburguesa famous star|siempre la pide
+      /gusta pide siempre famous star en carls jr
+      /nogusta catsup
+      /favorito bebida: cafe muy dulce
+    """
+    text = (raw_text or "").strip()
+    if not text:
+        raise ValueError("No se recibió texto")
+
+    cmd_key = re.escape(command.lower().lstrip("/"))
+    text = re.sub(rf"^/?{cmd_key}\s*", "", text, count=1, flags=re.IGNORECASE).strip()
+
+    if "|" in text:
+        parts = [p.strip() for p in text.split("|", 2)]
+        if len(parts) < 2:
+            raise ValueError(f"Uso: {command} categoria|item|nota(opcional)")
+        category = parts[0].strip()
+        item = parts[1].strip()
+        note = parts[2].strip() if len(parts) > 2 else ""
+        if not category or not item:
+            raise ValueError(f"Uso: {command} categoria|item|nota(opcional)")
+        return category, item, note
+
+    if ":" in text:
+        category, item = [part.strip() for part in text.split(":", 1)]
+        if category and item:
+            return category, item, ""
+
+    first, sep, rest = text.partition(" ")
+    category_keywords = {
+        "comida", "bebida", "cafe", "café", "personaje", "lugar", "actividad",
+        "juego", "musica", "música", "pelicula", "serie", "postre", "sabor",
+        "restaurante", "platillo", "fruta", "snack", "complemento"
+    }
+    if sep and first.strip().lower() in category_keywords and rest.strip():
+        return first.strip(), rest.strip(), ""
+
+    return "general", text.strip(), ""
 
 
 def _cmd_lista(chat_id: str, tipo: str | None, sh, historial: bool = False) -> None:
@@ -570,27 +616,23 @@ def _process_update(update: dict) -> None:
                 return
             _cmd_recuerdo_by_number(chat_id, sh, int(parts[1]))
 
-        elif command in ("/favorito", "/gusta"):
+        elif command in ("/gusta", "/favorito"):
             memory = _frida_memory()
-            payload = text.split("|", 2)
-            if len(payload) < 2:
-                _send(chat_id, "Uso: /favorito categoria|item|nota(opcional)")
+            try:
+                category, item, note = _parse_preference_payload(command, text)
+            except ValueError as exc:
+                _send(chat_id, str(exc))
                 return
-            category = payload[0].replace("/favorito", "").replace("/gusta", "").strip()
-            item = payload[1].strip()
-            note = payload[2].strip() if len(payload) > 2 else ""
             idx = memory.add_favorite(category, item, note)
             _send(chat_id, f"💞 Guardado como favorito #{idx}: <b>{_esc(item)}</b>")
 
         elif command in ("/nogusta", "/nodisgusta"):
             memory = _frida_memory()
-            payload = text.split("|", 2)
-            if len(payload) < 2:
-                _send(chat_id, "Uso: /nogusta categoria|item|nota(opcional)")
+            try:
+                category, item, note = _parse_preference_payload(command, text)
+            except ValueError as exc:
+                _send(chat_id, str(exc))
                 return
-            category = payload[0].replace("/nogusta", "").replace("/nodisgusta", "").strip()
-            item = payload[1].strip()
-            note = payload[2].strip() if len(payload) > 2 else ""
             idx = memory.add_dislike(category, item, note)
             _send(chat_id, f"⚠️ Guardado como dislike #{idx}: <b>{_esc(item)}</b>")
 
