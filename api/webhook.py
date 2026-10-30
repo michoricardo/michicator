@@ -67,7 +67,13 @@ def _send(chat_id: str, text: str, parse_mode: str = "HTML") -> None:
     payload = {"chat_id": chat_id, "text": text}
     if parse_mode:
         payload["parse_mode"] = parse_mode
+
     resp = requests.post(url, json=payload, timeout=8)
+    if not resp.ok and resp.status_code == 400 and parse_mode:
+        print(f"[_send] Telegram parse error {resp.status_code}: {resp.text[:200]}", flush=True)
+        payload.pop("parse_mode", None)
+        resp = requests.post(url, json=payload, timeout=8)
+
     if not resp.ok:
         print(f"[_send] Telegram error {resp.status_code}: {resp.text[:200]}", flush=True)
         raise RuntimeError(f"Telegram API error {resp.status_code}: {resp.text[:120]}")
