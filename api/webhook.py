@@ -203,6 +203,12 @@ def _parse_preference_payload(command: str, raw_text: str) -> tuple[str, str, st
     return "general", text.strip(), ""
 
 
+def _default_fuggler_name(memory: FridaMemory) -> str:
+    """Return a simple auto-generated name for photo-only fuggler uploads."""
+    fugglers = memory.get_fugglers(limit=500)
+    return f"Fuggler #{len(fugglers) + 1}"
+
+
 def _cmd_lista(chat_id: str, tipo: str | None, sh, historial: bool = False) -> None:
     if historial:
         ideas = sh.get_all_date_ideas(tipo=tipo)
@@ -521,23 +527,25 @@ def _process_update(update: dict) -> None:
             arr = [p.strip() for p in payload.split("|", 1)]
             nombre = arr[0] if arr else ""
             descripcion = arr[1] if len(arr) > 1 else ""
-            if nombre:
-                existing = memory.get_fuggler_by_name(nombre)
-                if existing:
-                    ws = sh._get_or_create_ws(
-                        "Fugglers",
-                        ["#", "nombre", "descripcion", "file_id", "foto_url", "fecha_registro"],
-                    )
-                    row_num = int(existing.get("_row", 0)) if existing.get("_row") else 0
-                    if row_num:
-                        ws.update_cell(row_num, 4, file_id)
-                    if descripcion:
-                        ws.update_cell(row_num, 3, descripcion)
-                    _send(chat_id, f"🐲 Foto adjunta a <b>{_esc(nombre)}</b>.")
-                else:
-                    memory.add_fuggler(nombre, descripcion, file_id=file_id)
-                    _send(chat_id, f"🐲 Fuggler guardado con foto: <b>{_esc(nombre)}</b>")
-                return
+            if not nombre:
+                nombre = _default_fuggler_name(memory)
+            existing = memory.get_fuggler_by_name(nombre)
+            if existing:
+                ws = sh._get_or_create_ws(
+                    "Fugglers",
+                    ["#", "nombre", "descripcion", "file_id", "foto_url", "fecha_registro"],
+                )
+                row_num = int(existing.get("_row", 0)) if existing.get("_row") else 0
+                if row_num:
+                    ws.update_cell(row_num, 4, file_id)
+                if descripcion:
+                    ws.update_cell(row_num, 3, descripcion)
+                _send(chat_id, f"🐲 Foto adjunta a <b>{_esc(nombre)}</b>.")
+            else:
+                memory.add_fuggler(nombre, descripcion, file_id=file_id)
+                _send(chat_id, f"🐲 Fuggler guardado con foto: <b>{_esc(nombre)}</b>")
+            return
+
         if file_id:
             idx = sh.add_memory_photo(
                 chat_id=chat_id,
@@ -546,7 +554,13 @@ def _process_update(update: dict) -> None:
                 file_unique_id=file_unique_id,
                 caption=caption,
             )
-            _send(chat_id, f"📸 Recuerdo guardado como <b>#{idx}</b>. Usa /recuerdos para verlos.")
+            if not caption:
+                memory = _frida_memory()
+                nombre = _default_fuggler_name(memory)
+                memory.add_fuggler(nombre, "", file_id=file_id)
+                _send(chat_id, f"📸 Recuerdo guardado como <b>#{idx}</b> y 🐲 foto de fuggler guardada como <b>{_esc(nombre)}</b>.")
+            else:
+                _send(chat_id, f"📸 Recuerdo guardado como <b>#{idx}</b>. Usa /recuerdos para verlos.")
         return
 
     if not text:
