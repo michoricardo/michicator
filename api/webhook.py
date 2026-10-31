@@ -328,15 +328,35 @@ def _cmd_fugglers(chat_id: str, memory: FridaMemory) -> None:
         _send(chat_id, "Todavia no hay fugglers guardados. Usa /fuggler nombre|descripcion")
         return
 
-    lines = ["🐲 <b>Fugglers de Frida:</b>"]
+    sent_any_photo = False
     for row in fugglers:
+        file_id = str(row.get("file_id", "")).strip()
         nombre = _esc(str(row.get("nombre", "")).strip())
         descripcion = _esc(str(row.get("descripcion", "")).strip())
+
+        if file_id:
+            caption = f"<b>{nombre}</b>"
+            if descripcion:
+                caption += f"\n{descripcion}"
+            _send_photo(chat_id, file_id=file_id, caption=caption)
+            sent_any_photo = True
+            continue
+
         line = f"<b>{nombre}</b>"
         if descripcion:
             line += f" — {descripcion}"
-        lines.append(line)
-    _send(chat_id, "\n\n".join(lines))
+        _send(chat_id, line)
+
+    if not sent_any_photo:
+        lines = ["🐲 <b>Fugglers de Frida:</b>"]
+        for row in fugglers:
+            nombre = _esc(str(row.get("nombre", "")).strip())
+            descripcion = _esc(str(row.get("descripcion", "")).strip())
+            line = f"<b>{nombre}</b>"
+            if descripcion:
+                line += f" — {descripcion}"
+            lines.append(line)
+        _send(chat_id, "\n\n".join(lines))
 
 
 def _memory_caption(memory: dict) -> str:
