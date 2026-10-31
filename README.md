@@ -250,12 +250,26 @@ Ricardo va llenando la pestaña `Dates con Frida` del Sheet con ideas mientras l
 
 ---
 
-## Módulos nuevos: preferencias, fugglers y recuerdos 💞
+## Novedades recientes: ideas de Frida, fugglers y recuerdos 💡
 
-Además del bot de mensajes automáticos, michicator ahora tiene 3 módulos prácticos para cuidar los detalles más bonitos de la relación:
+Estas son las cosas que se agregaron recientemente y que siguen funcionando junto con todo lo que ya existía:
+
+- **Ideas de Frida**: Frida puede guardar ideas de cita directamente con `/miidea texto`.
+- **Preferencias**: Ricardo o Frida pueden guardar lo que les gusta o disgusta con `/gusta` y `/nogusta`.
+- **Fugglers**: se pueden guardar fotos de fugglers por Telegram; si la foto viene sola, el bot la guarda como `Fuggler #N`.
+- **Galería de fugglers**: `/fugglers` muestra la colección y también manda fotos cuando ya están guardadas.
+- **Recuerdos con foto**: una foto enviada al bot se guarda como recuerdo y se puede consultar más tarde con los comandos de recuerdos.
+
+Esto se suma a la parte original del bot: canciones, frases, preguntas, contador de días y citas programadas; no sustituye ninguna de esas funcionalidades.
+
+---
+
+## Módulos activos: preferencias, fugglers y recuerdos 💞
+
+Michicator ya tiene 3 módulos funcionando en la práctica:
 
 1. `Preferencias Frida` para guardar lo que le gusta y lo que no le gusta
-2. `Fugglers` para guardar la colección de peluches y fotos
+2. `Fugglers` para guardar la colección y sus fotos
 3. `Recuerdos` para archivar fotos y momentos importantes
 
 ### 1) Preferencias de Frida
@@ -268,7 +282,7 @@ En la pestaña `Preferencias Frida` se guardan cosas como:
 - detalles que le hacen sentir en casa
 - cosas que no le gustan para no volver a ofrecerlas
 
-Los comandos principales son:
+Los comandos actuales son:
 
 | Comando | Qué hace |
 |---|---|
@@ -283,7 +297,7 @@ Ejemplos reales:
 - `/nogusta catsup`
 - `/nogusta café muy dulce`
 
-También funciona el formato más estructurado con categoría y item:
+También acepta el formato más estructurado:
 
 - `/gusta comida|hamburguesa famous star`
 - `/nogusta bebida|café con hielo demasiado dulce`
@@ -292,22 +306,22 @@ Esto funciona como una libreta emocional para no olvidar detalles pequeños pero
 
 ### 2) Colección de fugglers 🐲
 
-La pestaña `Fugglers` sirve para registrar la colección de peluches monstruosos de Frida. Ahí se guarda:
+La pestaña `Fugglers` sirve para registrar la colección de peluches monstruosos de Frida. Se guarda:
 
 - nombre del fuggler
-- breve descripción
+- descripción (opcional)
 - foto asociada (si se manda por Telegram)
 - fecha de registro
 
-Comandos útiles:
+Cómo funciona en la práctica:
 
-| Comando | Qué hace |
+| Caso | Qué ocurre |
 |---|---|
-| `/fuggler nombre|descripcion` | Agrega un fuggler a su colección |
-| `/fugglers` | Muestra la colección actual |
-| foto + caption `/fuggler nombre|descripcion` | Adjunta una foto al fuggler correspondiente |
+| foto sola | se guarda como fuggler con nombre automático (`Fuggler #N`) |
+| foto + caption `/fuggler nombre|descripcion` | se guarda con ese nombre y descripción |
+| `/fugglers` | muestra la colección actual y, si hay foto, la envía también |
 
-Esto evita que se repitan, y que se olvide cuál ya tiene y cuál todavía falta. La colección puede catalogarse por nombre y consultarse sin revisar el teléfono.
+Esto evita que se repitan, y que se olvide cuál ya tiene y cuál todavía falta. La colección puede consultarse sin revisar el teléfono.
 
 ### 3) Recuerdos con foto 📸
 
@@ -323,11 +337,11 @@ Comandos útiles:
 
 | Comando | Qué hace |
 |---|---|
-| foto directa al bot | Guarda la foto como recuerdo |
-| `/recuerdos` | Muestra recuerdos recientes |
-| `/recuerdo` | Envía un recuerdo aleatorio |
-| `/recuerdo reciente` | Envía el recuerdo más reciente |
-| `/recuerdofoto 3` | Muestra el recuerdo #3 |
+| foto directa al bot | guarda la foto como recuerdo |
+| `/recuerdos` | muestra recuerdos recientes |
+| `/recuerdo` | envía un recuerdo aleatorio |
+| `/recuerdo reciente` | envía el más reciente |
+| `/recuerdofoto 3` | muestra el recuerdo #3 |
 
 Esto sirve como un mini álbum privado de momentos de la relación, sin depender de buscar fotos sueltas en el teléfono.
 
@@ -337,7 +351,7 @@ Frida puede participar desde el mismo bot y mandar ideas de cita sin depender de
 
 | Comando | Qué hace |
 |---|---|
-| `/miidea texto` | Guarda una idea de cita directamente en `Dates con Frida` |
+| `/miidea texto` | guarda una idea de cita directamente en `Dates con Frida` |
 
 Esto vuelve al bot más colaborativo y más íntimo: no solo es un canal de envío, sino también un "cuaderno compartido" para ideas de recuerdos, horarios y actividades juntos.
 
